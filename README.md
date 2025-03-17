@@ -1,3 +1,5 @@
-# Codetective <img src="icon/codetective.png" alt="Logo" height="36" />
+# Codetective <img src="icon/codetective.png" alt="Logo" height="32" />
 
-Analyzes TODO
+Code AI authorship detection in three clicks.
+
+TODO
