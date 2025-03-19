@@ -13,6 +13,8 @@ use api_selection::{ApiProvider, ApiSelection};
 mod code_analysis;
 use code_analysis::CodeAnalysis;
 
+mod api;
+
 pub(crate) const NBSP: &str = "\u{00A0}"; // space
 pub(crate) const NBHY: &str = "\u{2011}"; // hyphen
 
@@ -32,7 +34,7 @@ fn Home() -> impl IntoView {
     let (api_key, set_api_key) = signal(String::new());
 
     view! {
-        <Title text="Codetective"/>
+        <Title text="Codetective" />
         <main>
             <div class="bg-gradient-to-tl from-gray-300 to-gray-200 text-black font-sans flex flex-col max-w-full min-h-screen">
                 <div class="flex flex-col items-center pt-16">
@@ -48,25 +50,46 @@ fn Home() -> impl IntoView {
                         </h2>
                     </div>
 
-                    <ApiSelection
-                        api_provider
-                        set_api_provider
-                        set_api_key
-                        stage
-                        set_stage
-                    />
+                    <ApiSelection api_provider set_api_provider set_api_key stage set_stage />
 
-                    <CodeAnalysis api_provider api_key stage set_stage/>
+                    <CodeAnalysis api_provider api_key stage set_stage />
                 </div>
 
                 <footer class="mt-auto py-6 text-center">
                     <p class="text-xs text-gray-500">
                         Made with{NBSP}
-                        <a href="https://leptos.dev" target="_blank" rel="noopener noreferrer" class="text-blue-700 hover:underline">Rust Leptos</a>{NBSP}+{NBSP}
-                        <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="text-blue-700 hover:underline">Tailwind CSS</a>{NBSP}+{NBSP}
-                        <a href="https://trunkrs.dev" target="_blank" rel="noopener noreferrer" class="text-blue-700 hover:underline">Trunk WASM</a>.{NBSP}
-                        Originally authored by{NBSP}
-                        <a href="https://josehu.com" target="_blank" rel="noopener noreferrer" class="text-blue-700 hover:underline">Guanzhou Hu</a>.
+                        <a
+                            href="https://leptos.dev"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-blue-700 hover:underline"
+                        >
+                            Rust Leptos
+                        </a>{NBSP}+{NBSP}
+                        <a
+                            href="https://tailwindcss.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-blue-700 hover:underline"
+                        >
+                            Tailwind CSS
+                        </a>{NBSP}+{NBSP}
+                        <a
+                            href="https://trunkrs.dev"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-blue-700 hover:underline"
+                        >
+                            Trunk WASM
+                        </a>.{NBSP}Originally authored by{NBSP}
+                        <a
+                            href="https://josehu.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-blue-700 hover:underline"
+                        >
+                            Guanzhou Hu
+                        </a>.
                     </p>
                 </footer>
             </div>
@@ -80,11 +103,11 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
-        <Stylesheet id="leptos" href="/style/output.css"/>
-        <Link rel="icon" type_="image/png" href="/icon/favicon-96x96.png"/>
+        <Stylesheet id="leptos" href="/style/output.css" />
+        <Link rel="icon" type_="image/png" href="/icon/favicon-96x96.png" />
         <Router>
             <Routes fallback=|| "Page not found.">
-                <Route path=StaticSegment("") view=Home/>
+                <Route path=StaticSegment("") view=Home />
             </Routes>
         </Router>
     }

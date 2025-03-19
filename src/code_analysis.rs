@@ -30,13 +30,27 @@ pub(crate) fn CodeAnalysis(
                 <div class="flex flex-col space-y-4">
                     <div class="flex space-x-4 justify-center">
                         <button class="px-5 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5 mr-2"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                                    clip-rule="evenodd"
+                                />
                             </svg>
                             Upload File
                         </button>
                         <button class="px-5 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5 mr-2"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
                                 <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
                                 <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
                             </svg>
@@ -67,13 +81,19 @@ pub(crate) fn CodeAnalysis(
                     <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
                 </div>
 
-                {move || (api_provider.get() != ApiProvider::Null).then(|| view! {
-                    <button
-                        on:click=handle_back_button
-                        class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors">
-                        Back
-                    </button>
-                })}
+                {move || {
+                    (api_provider.get() != ApiProvider::Null)
+                        .then(|| {
+                            view! {
+                                <button
+                                    on:click=handle_back_button
+                                    class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
+                                >
+                                    Back
+                                </button>
+                            }
+                        })
+                }}
             </div>
         }
     };

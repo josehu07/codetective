@@ -83,11 +83,13 @@ pub(crate) fn ApiSelection(
         view! {
             <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
                 <div class="flex items-center justify-center space-x-4">
-                    <label for="api-key" class="text-base text-gray-900 whitespace-nowrap">Enter API Key:</label>
+                    <label for="api-key" class="text-base text-gray-900 whitespace-nowrap">
+                        Enter API Key:
+                    </label>
                     <input
                         type="password"
                         id="api-key"
-                        placeholder={placeholder}
+                        placeholder=placeholder
                         prop:value=move || input_api_key.get()
                         on:input=move |ev| {
                             set_input_api_key.set(event_target_value(&ev));
@@ -97,18 +99,26 @@ pub(crate) fn ApiSelection(
                     />
                     <button
                         on:click=handle_confirm_button
-                        class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors">
+                        class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors"
+                    >
                         Confirm
                     </button>
-                    <div class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help" title="Codetective is a fully client-side WASM application. Your API key is not being exposed to any middle server.">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div
+                        class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help"
+                        title="Codetective is a fully client-side WASM application. Your API key is not being exposed to any middle server."
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                         </svg>
                     </div>
                 </div>
@@ -122,22 +132,31 @@ pub(crate) fn ApiSelection(
             <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
                 <div class="flex items-center justify-center space-x-4">
                     <div class="text-base text-gray-900 whitespace-nowrap">
-                        Use a provider of our choice that currently grants limited free{NBHY}tier quota.
+                        Use a provider of our choice that currently grants limited free{NBHY}
+                        tier quota.
                     </div>
                     <button
                         on:click=handle_confirm_button
-                        class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors">
+                        class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors"
+                    >
                         Confirm
                     </button>
-                    <div class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help" title="Limited availability per minute, day, and/or month, of course.">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div
+                        class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help"
+                        title="Limited availability per minute, day, and/or month, of course."
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                         </svg>
                     </div>
                 </div>
@@ -166,33 +185,47 @@ pub(crate) fn ApiSelection(
                 <div class="flex space-x-6 mt-6 mb-2 justify-center">
                     <button
                         on:click=handle_api_button_openai
-                        class={move || button_style_classes(ApiProvider::OpenAI)}>
-                        OpenAI<br/>
+                        class=move || button_style_classes(ApiProvider::OpenAI)
+                    >
+                        OpenAI
+                        <br />
                         <div class="font-mono">gpt{NBHY}4o</div>
                     </button>
                     <button
                         on:click=handle_api_button_claude
-                        class={move || button_style_classes(ApiProvider::Claude)}>
-                        Claude<br/>
+                        class=move || button_style_classes(ApiProvider::Claude)
+                    >
+                        Claude
+                        <br />
                         <div class="font-mono">3.7{NBHY}sonnet</div>
                     </button>
                     <button
                         on:click=handle_api_button_gemini
-                        class={move || button_style_classes(ApiProvider::Gemini)}>
-                        Gemini<br/>
+                        class=move || button_style_classes(ApiProvider::Gemini)
+                    >
+                        Gemini
+                        <br />
                         <div class="font-mono">2.0{NBHY}flash</div>
                     </button>
                     <button
                         on:click=handle_api_button_free
-                        class={move || button_style_classes(ApiProvider::Free)}>
-                        Free API<br/>
+                        class=move || button_style_classes(ApiProvider::Free)
+                    >
+                        Free API
+                        <br />
                         <div class="font-mono">limited</div>
                     </button>
                 </div>
 
-                {move || (api_provider.get() == ApiProvider::OpenAI).then(|| api_key_input_sec("sk-..."))}
-                {move || (api_provider.get() == ApiProvider::Claude).then(|| api_key_input_sec("sk-..."))}
-                {move || (api_provider.get() == ApiProvider::Gemini).then(|| api_key_input_sec("AI..."))}
+                {move || {
+                    (api_provider.get() == ApiProvider::OpenAI).then(|| api_key_input_sec("sk-..."))
+                }}
+                {move || {
+                    (api_provider.get() == ApiProvider::Claude).then(|| api_key_input_sec("sk-..."))
+                }}
+                {move || {
+                    (api_provider.get() == ApiProvider::Gemini).then(|| api_key_input_sec("AI..."))
+                }}
                 {move || (api_provider.get() == ApiProvider::Free).then(api_key_free_choice)}
             </div>
         }
@@ -211,13 +244,19 @@ pub(crate) fn ApiSelection(
                     <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
                 </div>
 
-                {move || (api_provider.get() != ApiProvider::Null).then(|| view! {
-                    <button
-                        on:click=handle_back_button
-                        class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors">
-                        Back
-                    </button>
-                })}
+                {move || {
+                    (api_provider.get() != ApiProvider::Null)
+                        .then(|| {
+                            view! {
+                                <button
+                                    on:click=handle_back_button
+                                    class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
+                                >
+                                    Back
+                                </button>
+                            }
+                        })
+                }}
             </div>
         }
     };
