@@ -3,7 +3,8 @@
 use leptos::prelude::*;
 
 use crate::apis::ApiClient;
-use crate::{Stage, NBSP};
+use crate::utils::{NBHY, NBSP};
+use crate::Stage;
 
 #[component]
 pub(crate) fn CodeAnalysis(

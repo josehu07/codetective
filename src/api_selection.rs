@@ -1,7 +1,5 @@
 //! Step 1 section: API provider selection and API key.
 
-use std::time::Duration;
-
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos::web_sys::KeyboardEvent;
@@ -11,9 +9,11 @@ use gloo_timers::future::TimeoutFuture;
 use crate::apis::ApiClient;
 use crate::utils::error::ApiKeyCheckError;
 use crate::utils::gadgets::{
-    FailureIndicator, HoverInfoIcon, InvisibleIndicator, SpinningIndicator, SuccessIndicator,
+    FailureIndicator, HoverInfoIcon, InvisibleIndicator, SpinningIndicator, StepHeaderCollapsed,
+    StepHeaderExpanded, SuccessIndicator,
 };
-use crate::{Stage, NBHY, NBSP};
+use crate::utils::{NBHY, NBSP};
+use crate::Stage;
 
 /// Enum that controls the state of API provider selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -21,6 +21,8 @@ pub(crate) enum ApiProvider {
     OpenAI,
     Claude,
     Gemini,
+    OpenRt,
+    GroqCl,
     Free,
     Null,
 }
@@ -31,6 +33,8 @@ impl ApiProvider {
             ApiProvider::OpenAI => "OpenAI (GPT-4o)",
             ApiProvider::Claude => "Claude (3.7 Sonnet)",
             ApiProvider::Gemini => "Gemini (2.0 Flash)",
+            ApiProvider::OpenRt => "OpenRouter (auto)",
+            ApiProvider::GroqCl => "Groq (Llama-3-70B)",
             ApiProvider::Free => "Free Quota",
             ApiProvider::Null => "Null",
         }
@@ -68,6 +72,10 @@ pub(crate) fn ApiSelection(
         set_api_provider.set(ApiProvider::Gemini);
         set_validation_state.set(ValidationState::Idle);
     };
+    let handle_api_button_openrt = move |_| {
+        set_api_provider.set(ApiProvider::OpenRt);
+        set_validation_state.set(ValidationState::Idle);
+    };
     let handle_api_button_free = move |_| {
         set_api_provider.set(ApiProvider::Free);
         set_validation_state.set(ValidationState::Idle);
@@ -86,7 +94,7 @@ pub(crate) fn ApiSelection(
 
     let handle_api_key_submit = move || {
         let current_api_provider = api_provider.get();
-        let api_key = input_api_key.read();
+        let api_key = input_api_key.read().trim().to_string();
 
         if current_api_provider != ApiProvider::Free && (api_key.is_empty() || !api_key.is_ascii())
         {
@@ -108,6 +116,7 @@ pub(crate) fn ApiSelection(
 
             match ApiClient::new(current_api_provider, api_key.clone()).await {
                 Ok(client) => {
+                    let chosen_provider = client.provider();
                     set_api_client.set(Some(client));
                     set_validation_state.set(ValidationState::Success);
 
@@ -116,7 +125,7 @@ pub(crate) fn ApiSelection(
 
                     log::info!(
                         "Step 1 confirmed: using {} key '{}'",
-                        current_api_provider.name(),
+                        chosen_provider.name(),
                         api_key
                     );
                     set_stage.set(Stage::ApiProvided);
@@ -169,6 +178,7 @@ pub(crate) fn ApiSelection(
                             ApiKeyCheckError::Status(_) => "authorization failure, invalid API key?",
                             ApiKeyCheckError::Limit(_) => "usage limit seems to have been exceeded!",
                             ApiKeyCheckError::Ascii(_) => "please provide a legit API key...",
+                            ApiKeyCheckError::Random(_) => "random number generation error...",
                         },
                     )}
                 </div>
@@ -264,6 +274,7 @@ pub(crate) fn ApiSelection(
     // for the back button functionality
     let handle_back_button = move |_| {
         set_api_provider.set(ApiProvider::Null);
+        set_input_api_key.set(String::new());
         set_validation_state.set(ValidationState::Idle);
         set_stage.set(Stage::Initial);
 
@@ -274,13 +285,19 @@ pub(crate) fn ApiSelection(
     let expanded_view = move || {
         view! {
             <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm animate-fade-in">
-                <div class="absolute -top-3 -left-5 px-4 py-2 bg-gray-600 rounded-full flex items-center justify-center text-xl text-white font-semibold">
-                    Step 1
-                </div>
+                <StepHeaderExpanded step=1 />
 
                 <div class="text-xl text-center text-gray-900">Select API Provider...</div>
 
                 <div class="flex space-x-6 mt-6 mb-2 justify-center">
+                    <button
+                        on:click=handle_api_button_free
+                        class=move || button_style_classes(ApiProvider::Free)
+                    >
+                        Free API
+                        <br />
+                        <div class="font-mono">limited</div>
+                    </button>
                     <button
                         on:click=handle_api_button_openai
                         class=move || button_style_classes(ApiProvider::OpenAI)
@@ -306,15 +323,16 @@ pub(crate) fn ApiSelection(
                         <div class="font-mono">2.0{NBHY}flash</div>
                     </button>
                     <button
-                        on:click=handle_api_button_free
-                        class=move || button_style_classes(ApiProvider::Free)
+                        on:click=handle_api_button_openrt
+                        class=move || button_style_classes(ApiProvider::OpenRt)
                     >
-                        Free API
+                        OpenRouter
                         <br />
-                        <div class="font-mono">limited</div>
+                        <div class="font-mono">auto</div>
                     </button>
                 </div>
 
+                {move || (api_provider.get() == ApiProvider::Free).then(api_key_free_choice)}
                 {move || {
                     (api_provider.get() == ApiProvider::OpenAI).then(|| api_key_input_sec("sk-..."))
                 }}
@@ -324,7 +342,10 @@ pub(crate) fn ApiSelection(
                 {move || {
                     (api_provider.get() == ApiProvider::Gemini).then(|| api_key_input_sec("AI..."))
                 }}
-                {move || (api_provider.get() == ApiProvider::Free).then(api_key_free_choice)}
+                {move || {
+                    (api_provider.get() == ApiProvider::OpenRt)
+                        .then(|| api_key_input_sec("sk-or-..."))
+                }}
             </div>
         }
     };
@@ -333,9 +354,7 @@ pub(crate) fn ApiSelection(
     let collapsed_view = move || {
         view! {
             <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm">
-                <div class="absolute -top-3 -left-5 px-4 py-2 bg-gray-500 rounded-full flex items-center justify-center text-lg text-white font-semibold">
-                    Step 1
-                </div>
+                <StepHeaderCollapsed step=1 />
 
                 <div class="text-center text-gray-800 text-lg">
                     <span class="font-semibold">API Provider and Model:{NBSP}{NBSP}</span>

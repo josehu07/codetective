@@ -17,9 +17,7 @@ pub(crate) mod apis;
 
 pub(crate) mod utils;
 use utils::gadgets::GitHubBanner;
-
-pub(crate) const NBSP: &str = "\u{00A0}"; // space
-pub(crate) const NBHY: &str = "\u{2011}"; // hyphen
+use utils::NBSP;
 
 /// Stage enum that controls where are we in the workflow.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]

@@ -10,6 +10,7 @@ pub(crate) enum ApiKeyCheckError {
     Status(String),
     Limit(String),
     Ascii(String),
+    Random(String),
 }
 
 impl ApiKeyCheckError {
@@ -28,6 +29,10 @@ impl ApiKeyCheckError {
     pub(crate) fn ascii(msg: impl ToString) -> Self {
         ApiKeyCheckError::Ascii(msg.to_string())
     }
+
+    pub(crate) fn random(msg: impl ToString) -> Self {
+        ApiKeyCheckError::Random(msg.to_string())
+    }
 }
 
 impl fmt::Display for ApiKeyCheckError {
@@ -37,6 +42,7 @@ impl fmt::Display for ApiKeyCheckError {
             ApiKeyCheckError::Status(msg) => write!(f, "Status error: {}", msg),
             ApiKeyCheckError::Limit(msg) => write!(f, "Limit error: {}", msg),
             ApiKeyCheckError::Ascii(msg) => write!(f, "Ascii error: {}", msg),
+            ApiKeyCheckError::Random(msg) => write!(f, "Random error: {}", msg),
         }
     }
 }
@@ -52,5 +58,11 @@ impl From<reqwest::Error> for ApiKeyCheckError {
 impl From<reqwest::header::InvalidHeaderValue> for ApiKeyCheckError {
     fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
         ApiKeyCheckError::parse(err)
+    }
+}
+
+impl From<getrandom::Error> for ApiKeyCheckError {
+    fn from(err: getrandom::Error) -> Self {
+        ApiKeyCheckError::random(err)
     }
 }

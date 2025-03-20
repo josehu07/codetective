@@ -185,6 +185,7 @@ dependencies = [
  "console_error_panic_hook",
  "console_log",
  "const_format",
+ "getrandom 0.3.1",
  "gloo-timers",
  "leptos",
  "leptos_meta",
@@ -559,8 +560,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a49c392881ce6d5c3b8cb70f98717b7c07aabbdff06687b9030dbfbe2725f8"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi 0.13.3+wasi-0.2.2",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
