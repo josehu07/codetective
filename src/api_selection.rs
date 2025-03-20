@@ -1,9 +1,19 @@
 //! Step 1 section: API provider selection and API key.
 
+use std::time::Duration;
+
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos::web_sys::KeyboardEvent;
 
-use super::{Stage, NBHY, NBSP};
+use gloo_timers::future::TimeoutFuture;
+
+use crate::apis::ApiClient;
+use crate::utils::error::ApiKeyCheckError;
+use crate::utils::gadgets::{
+    FailureIndicator, HoverInfoIcon, InvisibleIndicator, SpinningIndicator, SuccessIndicator,
+};
+use crate::{Stage, NBHY, NBSP};
 
 /// Enum that controls the state of API provider selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -27,26 +37,40 @@ impl ApiProvider {
     }
 }
 
+/// API key validation state.
+#[derive(Clone, PartialEq, Debug)]
+enum ValidationState {
+    Idle,
+    Pending,
+    Success,
+    Failure(ApiKeyCheckError),
+}
+
 #[component]
 pub(crate) fn ApiSelection(
-    api_provider: ReadSignal<ApiProvider>,
-    set_api_provider: WriteSignal<ApiProvider>,
-    set_api_key: WriteSignal<String>,
+    set_api_client: WriteSignal<Option<ApiClient>>,
     stage: ReadSignal<Stage>,
     set_stage: WriteSignal<Stage>,
 ) -> impl IntoView {
+    let (api_provider, set_api_provider) = signal(ApiProvider::Null);
+    let (validation_state, set_validation_state) = signal(ValidationState::Idle);
+
     // for API provider buttons
     let handle_api_button_openai = move |_| {
         set_api_provider.set(ApiProvider::OpenAI);
+        set_validation_state.set(ValidationState::Idle);
     };
     let handle_api_button_claude = move |_| {
         set_api_provider.set(ApiProvider::Claude);
+        set_validation_state.set(ValidationState::Idle);
     };
     let handle_api_button_gemini = move |_| {
         set_api_provider.set(ApiProvider::Gemini);
+        set_validation_state.set(ValidationState::Idle);
     };
     let handle_api_button_free = move |_| {
         set_api_provider.set(ApiProvider::Free);
+        set_validation_state.set(ValidationState::Idle);
     };
 
     let button_style_classes = move |selected_provider: ApiProvider| -> String {
@@ -59,22 +83,98 @@ pub(crate) fn ApiSelection(
 
     // for API key text box and submit button
     let (input_api_key, set_input_api_key) = signal(String::new());
+
     let handle_api_key_submit = move || {
-        set_api_key.set(input_api_key.get());
-        set_stage.set(Stage::ApiProvided);
-        log::info!(
-            "Step 1 confirmed: using {} key '{}'",
-            api_provider.get().name(),
-            input_api_key.get()
-        );
+        let current_api_provider = api_provider.get();
+        let api_key = input_api_key.read();
+
+        if current_api_provider != ApiProvider::Free && (api_key.is_empty() || !api_key.is_ascii())
+        {
+            log::warn!("API key input field is empty or non-ASCII, please try again...");
+            set_validation_state.set(ValidationState::Failure(ApiKeyCheckError::ascii(
+                "API key iput is empty or non-ASCII",
+            )));
+            return;
+        }
+
+        set_validation_state.set(ValidationState::Pending);
+
+        spawn_local(async move {
+            log::info!(
+                "Step 1 validating: using {} key '{}'...",
+                current_api_provider.name(),
+                api_key
+            );
+
+            match ApiClient::new(current_api_provider, api_key.clone()).await {
+                Ok(client) => {
+                    set_api_client.set(Some(client));
+                    set_validation_state.set(ValidationState::Success);
+
+                    // small delay before proceeding to next stage
+                    TimeoutFuture::new(500).await;
+
+                    log::info!(
+                        "Step 1 confirmed: using {} key '{}'",
+                        current_api_provider.name(),
+                        api_key
+                    );
+                    set_stage.set(Stage::ApiProvided);
+                }
+
+                Err(err) => {
+                    log::error!(
+                        "API client creation failed for {}: {}",
+                        current_api_provider.name(),
+                        err
+                    );
+                    set_validation_state.set(ValidationState::Failure(err));
+                }
+            }
+        });
     };
 
     let handle_confirm_button = move |_| {
-        handle_api_key_submit();
+        if validation_state.get() != ValidationState::Pending
+            && validation_state.get() != ValidationState::Success
+        {
+            handle_api_key_submit();
+        }
     };
     let handle_enter_key_down = move |ev: KeyboardEvent| {
-        if ev.key() == "Enter" {
+        if ev.key() == "Enter"
+            && validation_state.get() != ValidationState::Pending
+            && validation_state.get() != ValidationState::Success
+        {
             handle_api_key_submit();
+        }
+    };
+
+    // validation status indicator components
+    let validation_indicator = move || match validation_state.get() {
+        ValidationState::Idle => InvisibleIndicator().into_any(),
+        ValidationState::Pending => SpinningIndicator().into_any(),
+        ValidationState::Success => SuccessIndicator().into_any(),
+        ValidationState::Failure(_) => FailureIndicator().into_any(),
+    };
+
+    let validation_error_msg = move || {
+        if let ValidationState::Failure(err) = validation_state.get() {
+            Some(view! {
+                <div class="text-red-700 text-base font-mono mt-4 text-center animate-fade-in">
+                    {format!(
+                        "API key validation failed: {}",
+                        match err {
+                            ApiKeyCheckError::Parse(_) => "internal parsing error...",
+                            ApiKeyCheckError::Status(_) => "authorization failure, invalid API key?",
+                            ApiKeyCheckError::Limit(_) => "usage limit seems to have been exceeded!",
+                            ApiKeyCheckError::Ascii(_) => "please provide a legit API key...",
+                        },
+                    )}
+                </div>
+            })
+        } else {
+            None
         }
     };
 
@@ -91,37 +191,36 @@ pub(crate) fn ApiSelection(
                         id="api-key"
                         placeholder=placeholder
                         prop:value=move || input_api_key.get()
+                        prop:disabled=move || validation_state.get() == ValidationState::Pending
                         on:input=move |ev| {
                             set_input_api_key.set(event_target_value(&ev));
                         }
                         on:keydown=handle_enter_key_down
                         class="flex-1 p-2 max-w-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+
+                    <HoverInfoIcon text="Codetective is a fully client-side WASM app. Your API key is not exposed to any middle server. Charges apply to your API key, of course." />
+
                     <button
                         on:click=handle_confirm_button
-                        class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors"
+                        disabled=move || validation_state.get() == ValidationState::Pending
+                        class=move || {
+                            let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors";
+                            match validation_state.get() {
+                                ValidationState::Pending => {
+                                    format!("{} opacity-75 cursor-not-allowed", base)
+                                }
+                                _ => format!("{} hover:bg-gray-600", base),
+                            }
+                        }
                     >
                         Confirm
                     </button>
-                    <div
-                        class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help"
-                        title="Codetective is a fully client-side WASM application. Your API key is not being exposed to any middle server."
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </div>
+
+                    {validation_indicator}
                 </div>
+
+                {validation_error_msg}
             </div>
         }
     };
@@ -135,31 +234,29 @@ pub(crate) fn ApiSelection(
                         Use a provider of our choice that currently grants limited free{NBHY}
                         tier quota.
                     </div>
+
+                    <HoverInfoIcon text="Limited availability per minute, day, and/or month, of course." />
+
                     <button
                         on:click=handle_confirm_button
-                        class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors"
+                        disabled=move || validation_state.get() == ValidationState::Pending
+                        class=move || {
+                            let base = "px-5 py-2 bg-gray-500 text-white rounded-md shadow transition-colors";
+                            match validation_state.get() {
+                                ValidationState::Pending => {
+                                    format!("{} opacity-75 cursor-not-allowed", base)
+                                }
+                                _ => format!("{} hover:bg-gray-600", base),
+                            }
+                        }
                     >
                         Confirm
                     </button>
-                    <div
-                        class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help"
-                        title="Limited availability per minute, day, and/or month, of course."
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </div>
+
+                    {validation_indicator}
                 </div>
+
+                {validation_error_msg}
             </div>
         }
     };
@@ -167,8 +264,9 @@ pub(crate) fn ApiSelection(
     // for the back button functionality
     let handle_back_button = move |_| {
         set_api_provider.set(ApiProvider::Null);
-        set_api_key.set(String::new());
+        set_validation_state.set(ValidationState::Idle);
         set_stage.set(Stage::Initial);
+
         log::info!("Step 1 rolled back: resetting API provider and key");
     };
 
@@ -244,6 +342,7 @@ pub(crate) fn ApiSelection(
                     <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
                 </div>
 
+                // back button
                 {move || {
                     (api_provider.get() != ApiProvider::Null)
                         .then(|| {

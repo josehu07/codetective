@@ -2,20 +2,19 @@
 
 use leptos::prelude::*;
 
-use super::{Stage, NBSP};
-use crate::api_selection::ApiProvider;
+use crate::apis::ApiClient;
+use crate::{Stage, NBSP};
 
 #[component]
 pub(crate) fn CodeAnalysis(
-    api_provider: ReadSignal<ApiProvider>,
-    api_key: ReadSignal<String>,
+    api_client: ReadSignal<Option<ApiClient>>,
     stage: ReadSignal<Stage>,
     set_stage: WriteSignal<Stage>,
 ) -> impl IntoView {
     // for the back button functionality
-    let handle_back_button = move |_| {
-        set_stage.set(Stage::Initial);
-    };
+    // let handle_back_button = move |_| {
+    //     set_stage.set(Stage::Initial);
+    // };
 
     // expanded view when this step is active
     let expanded_view = move || {
@@ -76,24 +75,24 @@ pub(crate) fn CodeAnalysis(
                     Step 1
                 </div>
 
-                <div class="text-center text-gray-800 text-lg">
-                    <span class="font-semibold">API Provider and Model:{NBSP}{NBSP}</span>
-                    <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
-                </div>
+            // <div class="text-center text-gray-800 text-lg">
+            // <span class="font-semibold">API Provider and Model:{NBSP}{NBSP}</span>
+            // <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
+            // </div>
 
-                {move || {
-                    (api_provider.get() != ApiProvider::Null)
-                        .then(|| {
-                            view! {
-                                <button
-                                    on:click=handle_back_button
-                                    class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
-                                >
-                                    Back
-                                </button>
-                            }
-                        })
-                }}
+            // {move || {
+            // (api_provider.get() != ApiProvider::Null)
+            // .then(|| {
+            // view! {
+            // <button
+            // on:click=handle_back_button
+            // class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
+            // >
+            // Back
+            // </button>
+            // }
+            // })
+            // }}
             </div>
         }
     };

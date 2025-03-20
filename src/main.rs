@@ -7,13 +7,16 @@ use leptos_meta::{provide_meta_context, Link, Stylesheet, Title};
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::StaticSegment;
 
-mod api_selection;
-use api_selection::{ApiProvider, ApiSelection};
+pub(crate) mod api_selection;
+pub(crate) use api_selection::ApiSelection;
 
-mod code_analysis;
-use code_analysis::CodeAnalysis;
+pub(crate) mod code_analysis;
+pub(crate) use code_analysis::CodeAnalysis;
 
-mod api;
+pub(crate) mod apis;
+
+pub(crate) mod utils;
+use utils::gadgets::GitHubBanner;
 
 pub(crate) const NBSP: &str = "\u{00A0}"; // space
 pub(crate) const NBHY: &str = "\u{2011}"; // hyphen
@@ -30,14 +33,15 @@ pub(crate) enum Stage {
 #[component]
 fn Home() -> impl IntoView {
     let (stage, set_stage) = signal(Stage::Initial);
-    let (api_provider, set_api_provider) = signal(ApiProvider::Null);
-    let (api_key, set_api_key) = signal(String::new());
+    let (api_client, set_api_client) = signal(None);
 
     view! {
         <Title text="Codetective" />
         <main>
             <div class="bg-gradient-to-tl from-gray-300 to-gray-200 text-black font-sans flex flex-col max-w-full min-h-screen">
+                // main body sections
                 <div class="flex flex-col items-center pt-16">
+                    // title and logo
                     <div class="flex flex-col items-center">
                         <div class="flex items-end justify-center">
                             <h1 class="text-5xl font-bold text-gray-600">Co</h1>
@@ -50,14 +54,26 @@ fn Home() -> impl IntoView {
                         </h2>
                     </div>
 
-                    <ApiSelection api_provider set_api_provider set_api_key stage set_stage />
+                    // step 1:
+                    <ApiSelection set_api_client stage set_stage />
 
-                    <CodeAnalysis api_provider api_key stage set_stage />
+                    // step 2:
+                    <CodeAnalysis api_client stage set_stage />
                 </div>
 
-                <footer class="mt-auto py-6 text-center">
-                    <p class="text-xs text-gray-500">
-                        Made with{NBSP}
+                // footer text and links
+                <footer class="mt-auto py-6 flex text-center justify-center">
+                    <span class="mr-3">
+                        <a
+                            href="https://github.com/josehu07/codetective"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <GitHubBanner />
+                        </a>
+                    </span>
+                    <p class="text-sm text-gray-500">
+                        Made with {NBSP}
                         <a
                             href="https://leptos.dev"
                             target="_blank"
@@ -65,7 +81,7 @@ fn Home() -> impl IntoView {
                             class="text-blue-700 hover:underline"
                         >
                             Rust Leptos
-                        </a>{NBSP}+{NBSP}
+                        </a> {NBSP}+ {NBSP}
                         <a
                             href="https://tailwindcss.com"
                             target="_blank"
@@ -73,7 +89,7 @@ fn Home() -> impl IntoView {
                             class="text-blue-700 hover:underline"
                         >
                             Tailwind CSS
-                        </a>{NBSP}+{NBSP}
+                        </a> {NBSP}+ {NBSP}
                         <a
                             href="https://trunkrs.dev"
                             target="_blank"
@@ -81,7 +97,7 @@ fn Home() -> impl IntoView {
                             class="text-blue-700 hover:underline"
                         >
                             Trunk WASM
-                        </a>.{NBSP}Originally authored by{NBSP}
+                        </a>. {NBSP}{NBSP}Originally authored by {NBSP}
                         <a
                             href="https://josehu.com"
                             target="_blank"
