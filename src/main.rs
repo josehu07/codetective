@@ -8,10 +8,10 @@ use leptos_router::components::{Route, Router, Routes};
 use leptos_router::StaticSegment;
 
 pub(crate) mod api_selection;
-pub(crate) use api_selection::ApiSelection;
+use api_selection::ApiSelection;
 
-pub(crate) mod code_analysis;
-pub(crate) use code_analysis::CodeAnalysis;
+pub(crate) mod code_retrieve;
+use code_retrieve::CodeRetrieve;
 
 pub(crate) mod apis;
 
@@ -56,7 +56,7 @@ fn Home() -> impl IntoView {
                     <ApiSelection set_api_client stage set_stage />
 
                     // step 2:
-                    <CodeAnalysis api_client stage set_stage />
+                    <CodeRetrieve api_client stage set_stage />
                 </div>
 
                 // footer text and links

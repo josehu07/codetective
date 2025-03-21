@@ -33,9 +33,9 @@ impl ApiProvider {
             ApiProvider::OpenAI => "OpenAI (GPT-4o)",
             ApiProvider::Claude => "Claude (3.7 Sonnet)",
             ApiProvider::Gemini => "Gemini (2.0 Flash)",
-            ApiProvider::OpenRt => "OpenRouter (auto)",
+            ApiProvider::OpenRt => "OpenRouter (Auto)",
             ApiProvider::GroqCl => "Groq (Llama-3-70B)",
-            ApiProvider::Free => "Free Quota",
+            ApiProvider::Free => "Free Quota (Preset)",
             ApiProvider::Null => "Null",
         }
     }
@@ -350,7 +350,7 @@ pub(crate) fn ApiSelection(
         }
     };
 
-    // coolapsed view when this step has been completed
+    // collapsed view when this step has been completed
     let collapsed_view = move || {
         view! {
             <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm">
