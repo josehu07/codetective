@@ -24,6 +24,7 @@ use utils::NBSP;
 pub(crate) enum Stage {
     Initial,
     ApiProvided,
+    CodeImported,
     CodeAnalyzed,
 }
 
@@ -38,7 +39,7 @@ fn Home() -> impl IntoView {
         <main>
             <div class="bg-gradient-to-tl from-gray-300 to-gray-200 text-black font-sans flex flex-col max-w-full min-h-screen">
                 // main body sections
-                <div class="flex flex-col items-center pt-16">
+                <div class="flex flex-col items-center pt-10">
                     // title and logo
                     <div class="flex flex-col items-center">
                         <div class="flex items-end justify-center">
@@ -48,15 +49,22 @@ fn Home() -> impl IntoView {
                             <img src="/codetective.png" alt="Codetective Logo" class="ml-4 h-16" />
                         </div>
                         <h2 class="text-2xl font-semibold text-gray-600 mt-4">
-                            Code AI Authorship Detection in 3 Clicks
+                            Code AI Authorship Detection in 5 Clicks
                         </h2>
                     </div>
 
                     // step 1:
-                    <ApiSelection set_api_client stage set_stage />
+                    <ApiSelection
+                        set_api_client
+                        stage
+                        set_stage
+                    />
 
                     // step 2:
-                    <CodeRetrieve api_client stage set_stage />
+                    <CodeRetrieve
+                        stage
+                        set_stage
+                    />
                 </div>
 
                 // footer text and links
@@ -95,7 +103,7 @@ fn Home() -> impl IntoView {
                             class="text-blue-700 hover:underline"
                         >
                             Trunk WASM
-                        </a>. {NBSP}{NBSP}Originally authored by {NBSP}
+                        </a>. {NBSP}{NBSP}Authored by {NBSP}
                         <a
                             href="https://josehu.com"
                             target="_blank"
