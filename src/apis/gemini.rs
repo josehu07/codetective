@@ -13,14 +13,14 @@ use reqwest::Client;
 use crate::utils::error::ApiKeyCheckError;
 
 /// Gemini API request URL prefix.
-const GEMINI_API_PREFIX: &str = "https://generativelanguage.googleapis.com/v1beta/";
+const GEMINI_API_PREFIX: &str = "https://generativelanguage.googleapis.com/v1beta";
 
 /// Gemini default model name.
 const GEMINI_MODEL_NAME: &str = "gemini-2.0-flash";
 
 /// API key validity check request URL.
 /// Accompolished with the model information URL.
-const CHECK_API_KEY_URL: &str = concatcp!(GEMINI_API_PREFIX, "models/", GEMINI_MODEL_NAME);
+const CHECK_API_KEY_URL: &str = concatcp!(GEMINI_API_PREFIX, "/models/", GEMINI_MODEL_NAME);
 
 /// Default Gemini API key with no credits (only free quota access).
 const FREE_QUOTA_API_KEY: &str = "AIzaSyBz4AFXbOdj_pQ0ai0z_IithH76r9b0sro";

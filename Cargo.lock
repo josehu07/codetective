@@ -194,6 +194,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "url",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",

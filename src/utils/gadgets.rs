@@ -4,14 +4,6 @@ use leptos::prelude::*;
 
 use crate::utils::NBSP;
 
-/// Selection button style string.
-pub(crate) fn button_style_classes(is_selected: bool) -> String {
-    format!(
-        "w-32 h-16 rounded-lg shadow-md hover:shadow-lg flex-col items-center justify-center font-semibold border {}",
-        if is_selected { "bg-gray-200 text-gray-900 border-gray-400" } else { "bg-white hover:bg-gray-200 text-gray-600 hover:text-gray-900 border-gray-300" },
-    )
-}
-
 /// An empty loading indicator that occupies the same space but is invisible.
 #[component]
 pub(crate) fn InvisibleIndicator() -> impl IntoView {

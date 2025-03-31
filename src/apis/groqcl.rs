@@ -13,14 +13,14 @@ use reqwest::Client;
 use crate::utils::error::ApiKeyCheckError;
 
 /// Groq Cloud API request URL prefix.
-const GROQCL_API_PREFIX: &str = "https://api.groq.com/openai/v1/";
+const GROQCL_API_PREFIX: &str = "https://api.groq.com/openai/v1";
 
 /// Groq Cloud default model name.
 const GROQCL_MODEL_NAME: &str = "llama3-70b-8192";
 
 /// API key validity check request URL.
 /// Accompolished with the model information URL.
-const CHECK_API_KEY_URL: &str = concatcp!(GROQCL_API_PREFIX, "models/", GROQCL_MODEL_NAME);
+const CHECK_API_KEY_URL: &str = concatcp!(GROQCL_API_PREFIX, "/models/", GROQCL_MODEL_NAME);
 
 /// Default Groq Cloud API key with no credits (only free quota access).
 const FREE_QUOTA_API_KEY: &str = "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";

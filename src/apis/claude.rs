@@ -13,7 +13,7 @@ use reqwest::Client;
 use crate::utils::error::ApiKeyCheckError;
 
 /// Claude API request URL prefix.
-const CLAUDE_API_PREFIX: &str = "https://api.anthropic.com/v1/";
+const CLAUDE_API_PREFIX: &str = "https://api.anthropic.com/v1";
 
 /// Claude default model name.
 const CLAUDE_MODEL_NAME: &str = "claude-3-7-sonnet-20250219";
@@ -23,7 +23,7 @@ const CLAUDE_API_VERSION: &str = "2023-06-01";
 
 /// API key validity check request URL.
 /// Accompolished with the model information URL.
-const CHECK_API_KEY_URL: &str = concatcp!(CLAUDE_API_PREFIX, "models/", CLAUDE_MODEL_NAME);
+const CHECK_API_KEY_URL: &str = concatcp!(CLAUDE_API_PREFIX, "/models/", CLAUDE_MODEL_NAME);
 
 /// Claude API client.
 pub(crate) struct ApiClient {

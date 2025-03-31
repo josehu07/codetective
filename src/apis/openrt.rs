@@ -13,11 +13,11 @@ use reqwest::Client;
 use crate::utils::error::ApiKeyCheckError;
 
 /// OpenRouter API request URL prefix.
-const OPENRT_API_PREFIX: &str = "https://openrouter.ai/api/v1/";
+const OPENRT_API_PREFIX: &str = "https://openrouter.ai/api/v1";
 
 /// API key validity check request URL.
 /// Accompolished with the rate/credit limit checking API.
-const CHECK_API_KEY_URL: &str = concatcp!(OPENRT_API_PREFIX, "auth/key");
+const CHECK_API_KEY_URL: &str = concatcp!(OPENRT_API_PREFIX, "/auth/key");
 
 /// Default OpenRouter API key with no credits (only free quota access).
 const FREE_QUOTA_API_KEY: &str =

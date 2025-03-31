@@ -6,13 +6,13 @@ use leptos::task::spawn_local;
 use gloo_timers::future::TimeoutFuture;
 
 use crate::apis::ApiClient;
-use crate::utils::error::ApiKeyCheckError;
+use crate::utils::error::{ApiKeyCheckError, CodeImportError};
 use crate::utils::gadgets::{
-    button_style_classes, FailureIndicator, HoverInfoIcon, InvisibleIndicator, SpinningIndicator,
-    StepHeaderCollapsed, StepHeaderExpanded, SuccessIndicator,
+    FailureIndicator, HoverInfoIcon, InvisibleIndicator, SpinningIndicator, StepHeaderCollapsed,
+    StepHeaderExpanded, SuccessIndicator,
 };
 use crate::utils::{NBHY, NBSP};
-use crate::Stage;
+use crate::{CodeGroup, Stage, ValidationState};
 
 /// Enum that controls the state of API provider selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -40,44 +40,44 @@ impl ApiProvider {
     }
 }
 
-/// API key validation state.
-#[derive(Clone, PartialEq, Debug)]
-enum ValidationState {
-    Idle,
-    Pending,
-    Success,
-    Failure(ApiKeyCheckError),
+// Helper functions and handler "closure"s:
+fn button_style_classes(is_selected: bool) -> String {
+    format!(
+        "w-32 h-16 rounded-lg shadow-md hover:shadow-lg flex-col items-center justify-center font-semibold border {}",
+        if is_selected { "bg-gray-200 text-gray-900 border-gray-400" } else { "bg-white hover:bg-gray-200 text-gray-600 hover:text-gray-900 border-gray-300" },
+    )
 }
 
-// Helper functions and handler "closure"s:
 fn handle_api_select_button(
-    set_api_provider: WriteSignal<ApiProvider>,
-    set_validation_state: WriteSignal<ValidationState>,
+    api_provider: RwSignal<ApiProvider>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     selected_provider: ApiProvider,
 ) {
-    set_api_provider.set(selected_provider);
-    set_validation_state.set(ValidationState::Idle);
+    api_provider.set(selected_provider);
+    api_key_vstate.set(ValidationState::Idle);
 }
 
 fn handle_api_key_submit(
-    api_provider: ReadSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
 ) {
     let current_api_provider = api_provider.get();
-    let api_key = input_api_key.read().trim().to_string();
+    let mut api_key = input_api_key.read().trim().to_string();
 
     if current_api_provider != ApiProvider::Free && (api_key.is_empty() || !api_key.is_ascii()) {
         log::warn!("API key input field is empty or non-ASCII, please try again...");
-        set_validation_state.set(ValidationState::Failure(ApiKeyCheckError::ascii(
-            "API key iput is empty or non-ASCII",
+        api_key_vstate.set(ValidationState::Failure(ApiKeyCheckError::ascii(
+            "API key input is empty or non-ASCII",
         )));
         return;
+    } else if current_api_provider == ApiProvider::Free {
+        api_key = "preset".to_string();
     }
 
-    set_validation_state.set(ValidationState::Pending);
+    api_key_vstate.set(ValidationState::Pending);
 
     spawn_local(async move {
         log::info!(
@@ -89,8 +89,8 @@ fn handle_api_key_submit(
         match ApiClient::new(current_api_provider, api_key.clone()).await {
             Ok(client) => {
                 let chosen_provider = client.provider();
-                set_api_client.set(Some(client));
-                set_validation_state.set(ValidationState::Success);
+                api_client.set(Some(client));
+                api_key_vstate.set(ValidationState::Success);
 
                 // small delay before proceeding to next stage
                 TimeoutFuture::new(500).await;
@@ -100,7 +100,7 @@ fn handle_api_key_submit(
                     chosen_provider.name(),
                     api_key
                 );
-                set_stage.set(Stage::ApiProvided);
+                stage.set(Stage::ApiProvided);
             }
 
             Err(err) => {
@@ -109,72 +109,74 @@ fn handle_api_key_submit(
                     current_api_provider.name(),
                     err
                 );
-                set_validation_state.set(ValidationState::Failure(err));
+                api_key_vstate.set(ValidationState::Failure(err));
             }
         }
     });
 }
 
 fn handle_confirm_button(
-    api_provider: ReadSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    validation_state: ReadSignal<ValidationState>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
 ) {
-    if validation_state.get() != ValidationState::Pending
-        && validation_state.get() != ValidationState::Success
+    if api_key_vstate.get() != ValidationState::Pending
+        && api_key_vstate.get() != ValidationState::Success
     {
         handle_api_key_submit(
             api_provider,
             input_api_key,
-            set_validation_state,
-            set_api_client,
-            set_stage,
+            api_key_vstate,
+            api_client,
+            stage,
         );
     }
 }
 
 fn handle_enter_key_down(
-    api_provider: ReadSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    validation_state: ReadSignal<ValidationState>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
 ) {
-    if validation_state.get() != ValidationState::Pending
-        && validation_state.get() != ValidationState::Success
+    if api_key_vstate.get() != ValidationState::Pending
+        && api_key_vstate.get() != ValidationState::Success
     {
         handle_api_key_submit(
             api_provider,
             input_api_key,
-            set_validation_state,
-            set_api_client,
-            set_stage,
+            api_key_vstate,
+            api_client,
+            stage,
         );
     }
 }
 
 fn handle_back_button(
-    set_api_provider: WriteSignal<ApiProvider>,
-    set_input_api_key: WriteSignal<String>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_stage: WriteSignal<Stage>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    code_group: RwSignal<CodeGroup>,
+    stage: RwSignal<Stage>,
 ) {
-    set_api_provider.set(ApiProvider::Null);
-    set_input_api_key.set(String::new());
-    set_validation_state.set(ValidationState::Idle);
-    set_stage.set(Stage::Initial);
+    api_key_vstate.set(ValidationState::Idle);
+    code_in_vstate.set(ValidationState::Idle);
+    code_group.update(|cg| {
+        cg.reset();
+    });
+    stage.set(Stage::Initial);
 
-    log::info!("Step 1 rolled back: resetting API provider and key");
+    log::info!("Step 1 rolled back: resetting API key validation stage");
 }
 
 // Different display componenets shown selectively:
 #[component]
-fn ValidationIndicator(validation_state: ReadSignal<ValidationState>) -> impl IntoView {
-    move || match validation_state.get() {
+fn ValidationIndicator(
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+) -> impl IntoView {
+    move || match api_key_vstate.get() {
         ValidationState::Idle => InvisibleIndicator().into_any(),
         ValidationState::Pending => SpinningIndicator().into_any(),
         ValidationState::Success => SuccessIndicator().into_any(),
@@ -183,14 +185,16 @@ fn ValidationIndicator(validation_state: ReadSignal<ValidationState>) -> impl In
 }
 
 #[component]
-fn ValidationErrorMsg(validation_state: ReadSignal<ValidationState>) -> impl IntoView {
+fn ValidationErrorMsg(
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+) -> impl IntoView {
     move || {
-        if let ValidationState::Failure(err) = validation_state.get() {
+        if let ValidationState::Failure(err) = api_key_vstate.get() {
             Some(view! {
                 <div class="text-red-700 text-base font-mono mt-4 text-center animate-fade-in">
                     {format!(
                         "API key validation failed: {}",
-                        match err {
+                        match &err {
                             ApiKeyCheckError::Parse(_) => "internal parsing error...",
                             ApiKeyCheckError::Status(_) => "authorization failure, invalid API key?",
                             ApiKeyCheckError::Limit(_) => "usage limit seems to have been exceeded!",
@@ -208,13 +212,11 @@ fn ValidationErrorMsg(validation_state: ReadSignal<ValidationState>) -> impl Int
 
 #[component]
 fn ApiKeyInputSection(
-    api_provider: ReadSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    set_input_api_key: WriteSignal<String>,
-    validation_state: ReadSignal<ValidationState>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
@@ -228,23 +230,22 @@ fn ApiKeyInputSection(
                     id="api-key"
                     placeholder=placeholder
                     prop:value=move || input_api_key.get()
-                    prop:disabled=move || validation_state.get() == ValidationState::Pending
+                    prop:disabled=move || api_key_vstate.get() == ValidationState::Pending
                     on:input=move |ev| {
-                        set_input_api_key.set(event_target_value(&ev));
+                        input_api_key.set(event_target_value(&ev));
                     }
                     on:keydown=move |ev| {
-                        if ev.key() == "Enter" {
+                        if ev.key_code() != 0 && ev.key() == "Enter" {
                             handle_enter_key_down(
                                 api_provider,
                                 input_api_key,
-                                validation_state,
-                                set_validation_state,
-                                set_api_client,
-                                set_stage,
+                                api_key_vstate,
+                                api_client,
+                                stage,
                             );
                         }
                     }
-                    class="flex-1 p-2 max-w-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="flex-1 p-2 max-w-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 />
 
                 <HoverInfoIcon text="Codetective is a fully client-side WASM app. Your API key is not exposed to any middle server. Charges apply to your API key, of course." />
@@ -254,16 +255,15 @@ fn ApiKeyInputSection(
                         handle_confirm_button(
                             api_provider,
                             input_api_key,
-                            validation_state,
-                            set_validation_state,
-                            set_api_client,
-                            set_stage,
+                            api_key_vstate,
+                            api_client,
+                            stage,
                         );
                     }
-                    disabled=move || validation_state.get() == ValidationState::Pending
+                    disabled=move || api_key_vstate.get() == ValidationState::Pending
                     class=move || {
                         let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors";
-                        match validation_state.get() {
+                        match api_key_vstate.get() {
                             ValidationState::Pending => {
                                 format!("{} opacity-75 cursor-not-allowed", base)
                             }
@@ -274,29 +274,27 @@ fn ApiKeyInputSection(
                     Confirm
                 </button>
 
-                <ValidationIndicator validation_state />
+                <ValidationIndicator api_key_vstate />
             </div>
 
-            <ValidationErrorMsg validation_state />
+            <ValidationErrorMsg api_key_vstate />
         </div>
     }
 }
 
 #[component]
 fn FreeApiChoiceSection(
-    api_provider: ReadSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    validation_state: ReadSignal<ValidationState>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
 ) -> impl IntoView {
     view! {
         <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
             <div class="flex items-center justify-center space-x-4">
                 <div class="text-base text-gray-900 whitespace-nowrap">
-                    Use a provider of our choice that currently grants limited free{NBHY}
-                    tier quota.
+                    Use a provider of our choice that currently grants limited free{NBHY}tier quota.
                 </div>
 
                 <HoverInfoIcon text="Limited availability per minute, day, and/or month, of course." />
@@ -306,16 +304,15 @@ fn FreeApiChoiceSection(
                         handle_confirm_button(
                             api_provider,
                             input_api_key,
-                            validation_state,
-                            set_validation_state,
-                            set_api_client,
-                            set_stage
+                            api_key_vstate,
+                            api_client,
+                            stage,
                         );
                     }
-                    disabled=move || validation_state.get() == ValidationState::Pending
+                    disabled=move || api_key_vstate.get() == ValidationState::Pending
                     class=move || {
                         let base = "px-5 py-2 bg-gray-500 text-white rounded-md shadow transition-colors";
-                        match validation_state.get() {
+                        match api_key_vstate.get() {
                             ValidationState::Pending => {
                                 format!("{} opacity-75 cursor-not-allowed", base)
                             }
@@ -326,24 +323,21 @@ fn FreeApiChoiceSection(
                     Confirm
                 </button>
 
-                <ValidationIndicator validation_state />
+                <ValidationIndicator api_key_vstate />
             </div>
 
-            <ValidationErrorMsg validation_state />
+            <ValidationErrorMsg api_key_vstate />
         </div>
     }
 }
 
 #[component]
 fn ApiSelectionExpandedView(
-    api_provider: ReadSignal<ApiProvider>,
-    set_api_provider: WriteSignal<ApiProvider>,
-    input_api_key: ReadSignal<String>,
-    set_input_api_key: WriteSignal<String>,
-    validation_state: ReadSignal<ValidationState>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    stage: RwSignal<Stage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm animate-fade-in">
@@ -354,8 +348,8 @@ fn ApiSelectionExpandedView(
             <div class="flex space-x-6 mt-6 mb-2 justify-center">
                 <button
                     on:click=move |_| handle_api_select_button(
-                        set_api_provider,
-                        set_validation_state,
+                        api_provider,
+                        api_key_vstate,
                         ApiProvider::Free,
                     )
                     class=move || button_style_classes(api_provider.get() == ApiProvider::Free)
@@ -367,8 +361,8 @@ fn ApiSelectionExpandedView(
 
                 <button
                     on:click=move |_| handle_api_select_button(
-                        set_api_provider,
-                        set_validation_state,
+                        api_provider,
+                        api_key_vstate,
                         ApiProvider::OpenAI,
                     )
                     class=move || button_style_classes(api_provider.get() == ApiProvider::OpenAI)
@@ -380,8 +374,8 @@ fn ApiSelectionExpandedView(
 
                 <button
                     on:click=move |_| handle_api_select_button(
-                        set_api_provider,
-                        set_validation_state,
+                        api_provider,
+                        api_key_vstate,
                         ApiProvider::Claude,
                     )
                     class=move || button_style_classes(api_provider.get() == ApiProvider::Claude)
@@ -393,8 +387,8 @@ fn ApiSelectionExpandedView(
 
                 <button
                     on:click=move |_| handle_api_select_button(
-                        set_api_provider,
-                        set_validation_state,
+                        api_provider,
+                        api_key_vstate,
                         ApiProvider::Gemini,
                     )
                     class=move || button_style_classes(api_provider.get() == ApiProvider::Gemini)
@@ -406,8 +400,8 @@ fn ApiSelectionExpandedView(
 
                 <button
                     on:click=move |_| handle_api_select_button(
-                        set_api_provider,
-                        set_validation_state,
+                        api_provider,
+                        api_key_vstate,
                         ApiProvider::OpenRt,
                     )
                     class=move || button_style_classes(api_provider.get() == ApiProvider::OpenRt)
@@ -418,79 +412,95 @@ fn ApiSelectionExpandedView(
                 </button>
             </div>
 
-            {move || (api_provider.get() == ApiProvider::Free).then_some(view! {
-                <FreeApiChoiceSection
-                    api_provider
-                    input_api_key
-                    validation_state
-                    set_validation_state
-                    set_api_client
-                    set_stage
-                />
-            })}
+            {move || {
+                (api_provider.get() == ApiProvider::Free)
+                    .then_some(
+                        view! {
+                            <FreeApiChoiceSection
+                                api_provider
+                                input_api_key
+                                api_key_vstate
+                                api_client
+                                stage
+                            />
+                        },
+                    )
+            }}
 
-            {move || (api_provider.get() == ApiProvider::OpenAI).then_some(view! {
-                <ApiKeyInputSection
-                    api_provider
-                    input_api_key
-                    set_input_api_key
-                    validation_state
-                    set_validation_state
-                    set_api_client
-                    set_stage
-                    placeholder="sk-..."
-                />
-            })}
+            {move || {
+                (api_provider.get() == ApiProvider::OpenAI)
+                    .then_some(
+                        view! {
+                            <ApiKeyInputSection
+                                api_provider
+                                input_api_key
+                                api_key_vstate
+                                api_client
+                                stage
+                                placeholder="sk-..."
+                            />
+                        },
+                    )
+            }}
 
-            {move || (api_provider.get() == ApiProvider::Claude).then_some(view! {
-                <ApiKeyInputSection
-                    api_provider
-                    input_api_key
-                    set_input_api_key
-                    validation_state
-                    set_validation_state
-                    set_api_client
-                    set_stage
-                    placeholder="sk-..."
-                />
-            })}
+            {move || {
+                (api_provider.get() == ApiProvider::Claude)
+                    .then_some(
+                        view! {
+                            <ApiKeyInputSection
+                                api_provider
+                                input_api_key
+                                api_key_vstate
+                                api_client
+                                stage
+                                placeholder="sk-..."
+                            />
+                        },
+                    )
+            }}
 
-            {move || (api_provider.get() == ApiProvider::Gemini).then_some(view! {
-                <ApiKeyInputSection
-                    api_provider
-                    input_api_key
-                    set_input_api_key
-                    validation_state
-                    set_validation_state
-                    set_api_client
-                    set_stage
-                    placeholder="AI..."
-                />
-            })}
+            {move || {
+                (api_provider.get() == ApiProvider::Gemini)
+                    .then_some(
+                        view! {
+                            <ApiKeyInputSection
+                                api_provider
+                                input_api_key
+                                api_key_vstate
+                                api_client
+                                stage
+                                placeholder="AI..."
+                            />
+                        },
+                    )
+            }}
 
-            {move || (api_provider.get() == ApiProvider::OpenRt).then_some(view! {
-                <ApiKeyInputSection
-                    api_provider
-                    input_api_key
-                    set_input_api_key
-                    validation_state
-                    set_validation_state
-                    set_api_client
-                    set_stage
-                    placeholder="sk-or-..."
-                />
-            })}
+            {move || {
+                (api_provider.get() == ApiProvider::OpenRt)
+                    .then_some(
+                        view! {
+                            <ApiKeyInputSection
+                                api_provider
+                                input_api_key
+                                api_key_vstate
+                                api_client
+                                stage
+                                placeholder="sk-or-..."
+                            />
+                        },
+                    )
+            }}
         </div>
     }
 }
 
 #[component]
 fn ApiSelectionCollapsedView(
-    api_provider: ReadSignal<ApiProvider>,
-    set_api_provider: WriteSignal<ApiProvider>,
-    set_input_api_key: WriteSignal<String>,
-    set_validation_state: WriteSignal<ValidationState>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    code_group: RwSignal<CodeGroup>,
+    stage: RwSignal<Stage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm">
@@ -501,19 +511,24 @@ fn ApiSelectionCollapsedView(
                 <span class="text-xl font-mono">{move || api_provider.get().name()}</span>
             </div>
 
-            {move || (api_provider.get() != ApiProvider::Null).then_some(view! {
-                <button
-                    on:click=move |_| handle_back_button(
-                        set_api_provider,
-                        set_input_api_key,
-                        set_validation_state,
-                        set_stage
+            {move || {
+                (api_provider.get() != ApiProvider::Null)
+                    .then_some(
+                        view! {
+                            <button
+                                on:click=move |_| handle_back_button(
+                                    api_key_vstate,
+                                    code_in_vstate,
+                                    code_group,
+                                    stage,
+                                )
+                                class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
+                            >
+                                Back
+                            </button>
+                        },
                     )
-                    class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
-                >
-                    Back
-                </button>
-            })}
+            }}
         </div>
     }
 }
@@ -521,36 +536,43 @@ fn ApiSelectionCollapsedView(
 /// The API selection step wrapped in one place.
 #[component]
 pub(crate) fn ApiSelection(
-    set_api_client: WriteSignal<Option<ApiClient>>,
-    stage: ReadSignal<Stage>,
-    set_stage: WriteSignal<Stage>,
+    api_provider: RwSignal<ApiProvider>,
+    input_api_key: RwSignal<String>,
+    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
+    api_client: RwSignal<Option<ApiClient>>,
+    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    code_group: RwSignal<CodeGroup>,
+    stage: RwSignal<Stage>,
 ) -> impl IntoView {
-    let (api_provider, set_api_provider) = signal(ApiProvider::Null);
-    let (input_api_key, set_input_api_key) = signal(String::new());
-    let (validation_state, set_validation_state) = signal(ValidationState::Idle);
-
     view! {
-        {move || (stage.get() == Stage::Initial).then_some(view! {
-            <ApiSelectionExpandedView
-                api_provider
-                set_api_provider
-                input_api_key
-                set_input_api_key
-                validation_state
-                set_validation_state
-                set_api_client
-                set_stage
-            />
-        })}
+        {move || {
+            (stage.get() == Stage::Initial)
+                .then_some(
+                    view! {
+                        <ApiSelectionExpandedView
+                            api_provider
+                            input_api_key
+                            api_key_vstate
+                            api_client
+                            stage
+                        />
+                    },
+                )
+        }}
 
-        {move || (stage.get() > Stage::Initial).then_some(view! {
-            <ApiSelectionCollapsedView
-                api_provider
-                set_api_provider
-                set_input_api_key
-                set_validation_state
-                set_stage
-            />
-        })}
+        {move || {
+            (stage.get() > Stage::Initial)
+                .then_some(
+                    view! {
+                        <ApiSelectionCollapsedView
+                            api_provider
+                            api_key_vstate
+                            code_in_vstate
+                            code_group
+                            stage
+                        />
+                    },
+                )
+        }}
     }
 }

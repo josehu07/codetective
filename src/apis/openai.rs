@@ -13,14 +13,14 @@ use reqwest::Client;
 use crate::utils::error::ApiKeyCheckError;
 
 /// OpenAI API request URL prefix.
-const OPENAI_API_PREFIX: &str = "https://api.openai.com/v1/";
+const OPENAI_API_PREFIX: &str = "https://api.openai.com/v1";
 
 /// OpenAI default model name.
 const OPENAI_MODEL_NAME: &str = "gpt-4o";
 
 /// API key validity check request URL.
 /// Accompolished with the model information URL.
-const CHECK_API_KEY_URL: &str = concatcp!(OPENAI_API_PREFIX, "models/", OPENAI_MODEL_NAME);
+const CHECK_API_KEY_URL: &str = concatcp!(OPENAI_API_PREFIX, "/models/", OPENAI_MODEL_NAME);
 
 /// OpenAI API client.
 pub(crate) struct ApiClient {
