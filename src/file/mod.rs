@@ -62,7 +62,6 @@ impl CodeFile {
 
 /// Code import driver.
 pub(crate) struct CodeGroup {
-    lang_map: suffix::LanguageMap,
     client: Client,
 
     files: HashMap<String, CodeFile>,
@@ -73,7 +72,6 @@ impl CodeGroup {
     /// Creates an empty code importer with no files added yet.
     pub(crate) fn new() -> Self {
         CodeGroup {
-            lang_map: suffix::LanguageMap::new(),
             files: HashMap::new(),
             client: Client::new(),
             skipped: false,
@@ -93,7 +91,7 @@ impl CodeGroup {
     /// Returns the language name of a file extension.
     pub(crate) fn lang_name_of(&self, ext: Option<&str>) -> String {
         if let Some(ext) = ext {
-            let lang = self.lang_map.query(ext).unwrap_or("-");
+            let lang = suffix::LANGUAGE_MAP.get(ext).copied().unwrap_or("-");
             if lang.len() > LANG_LENGTH_CUTOFF {
                 format!("{}...", &lang[..LANG_LENGTH_CUTOFF])
             } else {
@@ -156,6 +154,16 @@ impl CodeGroup {
         Err(CodeImportError::parse(
             "URL not pointing to raw file or GitHub repo",
         ))
+    }
+
+    /// Adds a local file to the importer.
+    pub(crate) async fn add_local(&mut self, content: String) -> Result<(), CodeImportError> {
+        self.add_file(
+            "code from the textbox".to_string(),
+            CodeFile::new_local("textbox".to_string(), content),
+        )?;
+
+        Ok(())
     }
 
     /// Helper method to add a file to the importer.

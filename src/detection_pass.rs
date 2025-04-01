@@ -47,7 +47,7 @@ fn DetectionPassExpandedView(
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-2 text-left text-base font-medium text-gray-700">
-                                Path
+                                Code File
                             </th>
                             <th class="px-4 py-2 text-right text-base font-medium text-gray-700">
                                 Language

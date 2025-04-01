@@ -57,6 +57,7 @@ fn Home() -> impl IntoView {
 
     let import_method = RwSignal::new(ImportMethod::Null);
     let input_code_url = RwSignal::new(String::new());
+    let input_code_text = RwSignal::new(String::new());
     let code_in_vstate = RwSignal::new(ValidationState::Idle);
 
     view! {
@@ -90,7 +91,14 @@ fn Home() -> impl IntoView {
                     />
 
                     // step 2:
-                    <CodeRetrieve import_method input_code_url code_in_vstate code_group stage />
+                    <CodeRetrieve
+                        import_method
+                        input_code_url
+                        input_code_text
+                        code_in_vstate
+                        code_group
+                        stage
+                    />
 
                     // step 3:
                     <DetectionPass api_client code_group stage />

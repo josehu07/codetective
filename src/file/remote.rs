@@ -11,7 +11,7 @@ use url::Url;
 use reqwest::header::{HeaderMap, ACCEPT};
 use reqwest::{Response, StatusCode};
 
-use crate::file::suffix::LanguageMap;
+use crate::file::suffix::LANGUAGE_MAP;
 use crate::file::{CodeGroup, MAX_FILE_SIZE, MAX_NUM_FILES};
 use crate::utils::error::CodeImportError;
 
@@ -73,10 +73,7 @@ impl CodeGroup {
     }
 
     /// Validate the form of a remote URL. Returns the full path name on success.
-    fn validate_file_url<'u>(
-        url: &'u Url,
-        lang_map: &LanguageMap,
-    ) -> Result<&'u str, CodeImportError> {
+    fn validate_file_url<'u>(url: &'u Url) -> Result<&'u str, CodeImportError> {
         if url.scheme() != "http" && url.scheme() != "https" {
             return Err(CodeImportError::parse(format!(
                 "unsupported URL scheme: {}",
@@ -85,7 +82,7 @@ impl CodeGroup {
         }
 
         let ext = Self::get_url_extension(url)?;
-        if !lang_map.valid(ext) {
+        if !LANGUAGE_MAP.contains_key(ext) {
             Err(CodeImportError::exten(format!(
                 "file extension '{}' is not code",
                 ext
@@ -175,7 +172,7 @@ impl CodeGroup {
             }
 
             // if we got here, it's likely a file
-            let path = Self::validate_file_url(&final_url, &self.lang_map)?;
+            let path = Self::validate_file_url(&final_url)?;
             return Ok(Some((path.to_string(), final_url, approx_size)));
         }
 
@@ -308,7 +305,7 @@ impl CodeGroup {
                         // regular file, add if is a code file
                         if let Some(dot_pos) = entry.path.rfind('.') {
                             let extension = &entry.path[dot_pos..];
-                            if !extension.is_empty() && self.lang_map.valid(extension) {
+                            if !extension.is_empty() && LANGUAGE_MAP.contains_key(extension) {
                                 let this_path =
                                     format!("{}/{}", repo, full_path(&path, &entry.path));
                                 let raw_url = Url::parse(
