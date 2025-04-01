@@ -12,12 +12,12 @@ module.exports = {
                 'slide-down': {
                     '0%': {
                         opacity: '0',
-                        transform: 'scaleY(0)',
+                        transform: 'translateY(-10px) scaleY(0)',
                         'transform-origin': 'top',
                     },
                     '100%': {
                         opacity: '1',
-                        transform: 'scaleY(1)',
+                        transform: 'translateY(0px) scaleY(1)',
                     },
                 },
                 'fade-in': {
@@ -35,7 +35,7 @@ module.exports = {
                 },
             },
             animation: {
-                'slide-down': 'slide-down 0.15s ease-out both',
+                'slide-down': 'slide-down 0.2s ease-out both',
                 'fade-in': 'fade-in 0.4s ease-out both',
                 'shake-fast': 'shake 0.5s ease-in-out both',
                 'bounce-mid': 'bounce 0.8s ease-in-out both',
