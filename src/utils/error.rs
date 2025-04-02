@@ -77,6 +77,7 @@ pub(crate) enum CodeImportError {
     Limit(String),
     Ascii(String),
     GitHub(String),
+    Upload(String),
 }
 
 impl CodeImportError {
@@ -107,6 +108,10 @@ impl CodeImportError {
     pub(crate) fn github(msg: impl ToString) -> Self {
         CodeImportError::GitHub(msg.to_string())
     }
+
+    pub(crate) fn upload(msg: impl ToString) -> Self {
+        CodeImportError::Upload(msg.to_string())
+    }
 }
 
 impl fmt::Display for CodeImportError {
@@ -119,6 +124,7 @@ impl fmt::Display for CodeImportError {
             CodeImportError::Limit(msg) => write!(f, "Limit error: {}", msg),
             CodeImportError::Ascii(msg) => write!(f, "Ascii error: {}", msg),
             CodeImportError::GitHub(msg) => write!(f, "GitHub error: {}", msg),
+            CodeImportError::Upload(msg) => write!(f, "Upload error: {}", msg),
         }
     }
 }
@@ -131,9 +137,21 @@ impl From<url::ParseError> for CodeImportError {
     }
 }
 
+impl From<gloo_file::FileReadError> for CodeImportError {
+    fn from(err: gloo_file::FileReadError) -> Self {
+        CodeImportError::parse(err)
+    }
+}
+
 impl From<reqwest::header::InvalidHeaderValue> for CodeImportError {
     fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
         CodeImportError::parse(err)
+    }
+}
+
+impl From<std::io::Error> for CodeImportError {
+    fn from(err: std::io::Error) -> Self {
+        CodeImportError::upload(err)
     }
 }
 

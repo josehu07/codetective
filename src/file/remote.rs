@@ -73,7 +73,7 @@ impl CodeGroup {
     }
 
     /// Validate the form of a remote URL. Returns the full path name on success.
-    fn validate_file_url<'u>(url: &'u Url) -> Result<&'u str, CodeImportError> {
+    fn validate_file_url(url: &Url) -> Result<&str, CodeImportError> {
         if url.scheme() != "http" && url.scheme() != "https" {
             return Err(CodeImportError::parse(format!(
                 "unsupported URL scheme: {}",
@@ -319,15 +319,17 @@ impl CodeGroup {
                                     )
                                     .as_str(),
                                 )?;
+
                                 let approx_size =
                                     entry.size.map(|s| s.as_u64().unwrap_or(0)).unwrap_or(0)
                                         as usize; // 0 means unclear size
-
                                 if approx_size > MAX_FILE_SIZE {
                                     self.skipped = true;
                                     continue; // skip too-large file
                                 }
+
                                 path_info_list.push((this_path, (raw_url, approx_size)));
+
                                 if path_info_list.len() >= MAX_NUM_FILES {
                                     return Ok(());
                                 }

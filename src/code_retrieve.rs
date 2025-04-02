@@ -5,7 +5,6 @@ use leptos::task::spawn_local;
 
 use web_sys::DragEvent;
 
-use gloo_file::futures::read_as_text;
 use gloo_file::FileList;
 use gloo_timers::future::TimeoutFuture;
 
@@ -81,7 +80,7 @@ fn handle_code_url_submit(
         );
 
         let mut code_group_inner = code_group.write();
-        match code_group_inner.add_remote(&code_url).await {
+        match code_group_inner.import_remote(&code_url).await {
             Ok(()) => {
                 code_in_vstate.set(ValidationState::Success);
 
@@ -130,12 +129,13 @@ fn handle_code_text_submit(
 
     spawn_local(async move {
         log::info!(
-            "Step 2 validating: importing from {}...",
-            current_import_method.name()
+            "Step 2 validating: importing from {}, size {}...",
+            current_import_method.name(),
+            code_text.len()
         );
 
         let mut code_group_inner = code_group.write();
-        match code_group_inner.add_local(code_text).await {
+        match code_group_inner.import_textbox(code_text).await {
             Ok(()) => {
                 code_in_vstate.set(ValidationState::Success);
 
@@ -169,62 +169,51 @@ fn handle_code_files_upload(
     code_group: RwSignal<CodeGroup>,
     stage: RwSignal<Stage>,
 ) {
-    // if file.size() > MAX_FILE_SIZE as f64 {
-    //     log::warn!("File size too large: {}KB", file.size() / 1024.0);
-    //     code_in_vstate.set(ValidationState::Failure(CodeImportError::limit(&format!(
-    //         "File size exceeds limit of {}KB",
-    //         MAX_FILE_SIZE / 1024
-    //     ))));
-    //     return;
-    // }
+    let current_import_method = import_method.get();
 
-    // code_in_vstate.set(ValidationState::Pending);
+    if file_list.is_empty() {
+        log::warn!("Code file list uploaded is empty, please try again...");
+        code_in_vstate.set(ValidationState::Failure(CodeImportError::parse(
+            "code file list uploaded is empty",
+        )));
+        return;
+    }
 
-    // spawn_local(async move {
-    //     log::info!(
-    //         "Step 2 validating: importing file '{}' from {}...",
-    //         file.name(),
-    //         import_method.get().name()
-    //     );
+    code_in_vstate.set(ValidationState::Pending);
 
-    //     // Read the file content
-    //     let file_content = match read_as_text(&file).await {
-    //         Ok(content) => content,
-    //         Err(err) => {
-    //             log::error!("Failed to read file: {}", err);
-    //             code_in_vstate.set(ValidationState::Failure(CodeImportError::parse(
-    //                 "Failed to read file content",
-    //             )));
-    //             return;
-    //         }
-    //     };
+    spawn_local(async move {
+        log::info!(
+            "Step 2 validating: importing from {}, {} files...",
+            current_import_method.name(),
+            file_list.len()
+        );
 
-    //     let mut code_group_inner = code_group.write();
-    //     match code_group_inner.add_local(file_content).await {
-    //         Ok(()) => {
-    //             code_in_vstate.set(ValidationState::Success);
+        let mut code_group_inner = code_group.write();
+        match code_group_inner.import_upload(file_list).await {
+            Ok(()) => {
+                code_in_vstate.set(ValidationState::Success);
 
-    //             // small delay before proceeding to next stage
-    //             TimeoutFuture::new(500).await;
+                // small delay before proceeding to next stage
+                TimeoutFuture::new(500).await;
 
-    //             log::info!(
-    //                 "Step 2 confirmed: imported {} file(s) from {}",
-    //                 code_group_inner.num_files(),
-    //                 import_method.get().name()
-    //             );
-    //             stage.set(Stage::CodeImported);
-    //         }
+                log::info!(
+                    "Step 2 confirmed: imported {} file(s) from {}",
+                    code_group_inner.num_files(),
+                    current_import_method.name()
+                );
+                stage.set(Stage::CodeImported);
+            }
 
-    //         Err(err) => {
-    //             log::error!(
-    //                 "Code import from {} failed: {}",
-    //                 import_method.get().name(),
-    //                 err
-    //             );
-    //             code_in_vstate.set(ValidationState::Failure(err));
-    //         }
-    //     }
-    // });
+            Err(err) => {
+                log::error!(
+                    "Code import from {} failed: {}",
+                    current_import_method.name(),
+                    err
+                );
+                code_in_vstate.set(ValidationState::Failure(err));
+            }
+        }
+    });
 }
 
 fn handle_back_button(
@@ -270,6 +259,7 @@ fn ValidationErrorMsg(code_in_vstate: RwSignal<ValidationState<CodeImportError>>
                             CodeImportError::Limit(msg) => &msg,
                             CodeImportError::Ascii(_) => "please provide a legit input source...",
                             CodeImportError::GitHub(msg) => &msg,
+                            CodeImportError::Upload(msg) => &msg,
                         },
                     )}
                 </div>
@@ -374,10 +364,12 @@ fn ImportFromUploadSection(
             <div class="flex flex-col items-center justify-center space-y-4">
                 <div class="w-full flex items-center space-x-4">
                     <label for="file-upload" class="text-base text-gray-900 whitespace-nowrap">
-                        Upload files or archive:
+                        Upload file(s) or an archive
+                        {NBSP}
+                        (zip, tar, tar.gz, 7z):
                     </label>
                     <div class="flex-1"></div>
-                    <HoverInfoIcon text="Upload a code file or an archive. Size per file limited to 100KB. Number of files (if archive) capped to 100 (but may improve later)." />
+                    <HoverInfoIcon text="Upload one or more code files, or a supported archive. Size per file limited to 100KB. Number of files (if archive) capped to 100 (but may improve later)." />
                 </div>
 
                 <div
@@ -427,6 +419,7 @@ fn ImportFromUploadSection(
                 >
                     <input
                         type="file"
+                        multiple
                         id="file-upload"
                         accept="*"
                         class="hidden"
@@ -451,7 +444,7 @@ fn ImportFromUploadSection(
                     />
 
                     <svg
-                        class="w-12 h-12 text-gray-400 mb-3"
+                        class="w-12 h-12 text-gray-400 mb-3 pointer-events-none"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -465,7 +458,7 @@ fn ImportFromUploadSection(
                         ></path>
                     </svg>
 
-                    <div class="text-lg font-medium text-gray-700">
+                    <div class="text-base font-medium text-gray-700 pointer-events-none">
                         {move || {
                             if is_dragging.get() {
                                 "Drop file here..."
@@ -507,10 +500,10 @@ fn ImportFromPasteSection(
             <div class="flex flex-col items-center justify-center space-y-4">
                 <div class="w-full flex items-center space-x-4">
                     <label for="code-textbox" class="text-base text-gray-900 whitespace-nowrap">
-                        Paste or type in code:
+                        Paste or type in code textbox directly:
                     </label>
                     <div class="flex-1"></div>
-                    <HoverInfoIcon text="Paste your source code directly into the text box. Size limited to 100KB, but code files are normally much smaller than that." />
+                    <HoverInfoIcon text="Paste or type your source code directly into the text box. Size limited to 100KB, but code files are normally much smaller than that." />
                 </div>
 
                 // wrap textarea in a div with almost identical styling so that

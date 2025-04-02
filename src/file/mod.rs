@@ -2,14 +2,19 @@
 
 use std::collections::{hash_map, HashMap};
 
+use leptos::prelude::*;
+
+use gloo_file::FileList;
+
 use url::Url;
 
 use reqwest::Client;
 
 use crate::utils::error::CodeImportError;
 
-mod local;
 mod remote;
+mod upload;
+
 mod suffix;
 
 // Hardcoded limits on the scale of imported files.
@@ -58,13 +63,37 @@ impl CodeFile {
             CodeFile::Remote { url, .. } => CodeGroup::get_url_extension(url).ok(),
         }
     }
+
+    /// Returns the display string of a path (which applies a cut-off if it's
+    /// too long).
+    pub(crate) fn path_display(path: &str) -> String {
+        if path.len() > PATH_LENGTH_CUTOFF {
+            format!("...{}", &path[(path.len() - PATH_LENGTH_CUTOFF)..])
+        } else {
+            path.to_string()
+        }
+    }
+
+    /// Returns the language name of a file extension.
+    pub(crate) fn lang_name_of(ext: Option<&str>) -> String {
+        if let Some(ext) = ext {
+            let lang = suffix::LANGUAGE_MAP.get(ext).copied().unwrap_or("-");
+            if lang.len() > LANG_LENGTH_CUTOFF {
+                format!("{}...", &lang[..LANG_LENGTH_CUTOFF])
+            } else {
+                lang.to_string()
+            }
+        } else {
+            "-".to_string()
+        }
+    }
 }
 
 /// Code import driver.
 pub(crate) struct CodeGroup {
     client: Client,
 
-    files: HashMap<String, CodeFile>,
+    files: HashMap<String, RwSignal<CodeFile>>,
     skipped: bool,
 }
 
@@ -75,30 +104,6 @@ impl CodeGroup {
             files: HashMap::new(),
             client: Client::new(),
             skipped: false,
-        }
-    }
-
-    /// Returns the display string of a path (which applies a cut-off if it's
-    /// too long).
-    pub(crate) fn path_display(&self, path: &str) -> String {
-        if path.len() > PATH_LENGTH_CUTOFF {
-            format!("...{}", &path[(path.len() - PATH_LENGTH_CUTOFF)..])
-        } else {
-            path.to_string()
-        }
-    }
-
-    /// Returns the language name of a file extension.
-    pub(crate) fn lang_name_of(&self, ext: Option<&str>) -> String {
-        if let Some(ext) = ext {
-            let lang = suffix::LANGUAGE_MAP.get(ext).copied().unwrap_or("-");
-            if lang.len() > LANG_LENGTH_CUTOFF {
-                format!("{}...", &lang[..LANG_LENGTH_CUTOFF])
-            } else {
-                lang.to_string()
-            }
-        } else {
-            "-".to_string()
         }
     }
 
@@ -118,7 +123,7 @@ impl CodeGroup {
     pub(crate) fn total_size(&self) -> Option<usize> {
         self.files
             .values()
-            .map(|file| file.get_size())
+            .map(|file| file.read().get_size())
             .sum::<Option<usize>>()
     }
 
@@ -128,13 +133,19 @@ impl CodeGroup {
         self.skipped = false;
     }
 
-    /// Return an iterator of the imported files.
-    pub(crate) fn files(&self) -> impl Iterator<Item = (&String, &CodeFile)> {
-        self.files.iter()
+    /// Return a sorted, owning collection of the imported files.
+    pub(crate) fn sorted_files(&self) -> Vec<(String, RwSignal<CodeFile>)> {
+        let mut files: Vec<_> = self
+            .files
+            .iter()
+            .map(|(path, &file)| (path.clone(), file))
+            .collect();
+        files.sort_by(|(pa, _), (pb, _)| pa.cmp(pb));
+        files
     }
 
-    /// Adds a remote file or a repo of files to the importer.
-    pub(crate) async fn add_remote(&mut self, url_str: &str) -> Result<(), CodeImportError> {
+    /// Populates the importer with a remote file or a repo of files.
+    pub(crate) async fn import_remote(&mut self, url_str: &str) -> Result<(), CodeImportError> {
         let url = Url::parse(url_str)?;
 
         // first try as URL to github repo
@@ -156,14 +167,39 @@ impl CodeGroup {
         ))
     }
 
-    /// Adds a local file to the importer.
-    pub(crate) async fn add_local(&mut self, content: String) -> Result<(), CodeImportError> {
+    /// Populates the importer with a plain textbox content.
+    pub(crate) async fn import_textbox(&mut self, content: String) -> Result<(), CodeImportError> {
         self.add_file(
             "code from the textbox".to_string(),
             CodeFile::new_local("textbox".to_string(), content),
         )?;
 
         Ok(())
+    }
+
+    /// Populates the importer with an uploaded file list.
+    pub(crate) async fn import_upload(&mut self, files: FileList) -> Result<(), CodeImportError> {
+        // first try as a single archive file
+        if files.len() == 1 {
+            if let Some(name_data_list) = self.extract_archive(&files[0]).await? {
+                for (name, (ext, content)) in name_data_list {
+                    self.add_file(name.clone(), CodeFile::new_local(ext, content))?;
+                }
+                return Ok(());
+            }
+        }
+
+        // then try as a list of files, only considering valid code files within
+        if let Some(name_data_list) = self.list_upload_files(files).await? {
+            for (name, (ext, content)) in name_data_list {
+                self.add_file(name.clone(), CodeFile::new_local(ext, content))?;
+            }
+            return Ok(());
+        }
+
+        Err(CodeImportError::upload(
+            "uploaded files do not contain any code files",
+        ))
     }
 
     /// Helper method to add a file to the importer.
@@ -176,7 +212,7 @@ impl CodeGroup {
                 )));
             }
             hash_map::Entry::Vacant(e) => {
-                e.insert(file);
+                e.insert(RwSignal::new(file));
             }
         }
         Ok(())

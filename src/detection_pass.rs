@@ -60,31 +60,28 @@ fn DetectionPassExpandedView(
                             </th>
                         </tr>
                     </thead>
+
                     <tbody>
-                        {move || {
-                            let code_group = code_group.read();
-                            code_group
-                                .files()
-                                .map(|(path, file)| {
-                                    view! {
-                                        <tr class="border-t border-gray-200 hover:bg-gray-50 transition-colors duration-50">
-                                            <td class="px-4 py-2 text-base text-gray-900 text-left font-mono">
-                                                {code_group.path_display(path)}
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-800 text-right">
-                                                {code_group.lang_name_of(file.get_ext())}
-                                            </td>
-                                            <td class="px-4 py-2 text-sm text-gray-800 text-right">
-                                                {format_file_size(file.get_size())}
-                                            </td>
-                                            <td class="px-4 py-2 flex justify-center text-center">
-                                                <SpinningIndicator />
-                                            </td>
-                                        </tr>
-                                    }
-                                })
-                                .collect_view()
-                        }}
+                        <For
+                            each=move || code_group.read().sorted_files()
+                            key=|(path, _)| path.clone()
+                            let((path, file))
+                        >
+                            <tr class="border-t border-gray-200 hover:bg-gray-50 transition-colors duration-50">
+                                <td class="px-4 py-2 text-base text-gray-900 text-left font-mono">
+                                    {CodeFile::path_display(path.as_str())}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-800 text-right">
+                                    {CodeFile::lang_name_of(file.read().get_ext())}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-800 text-right">
+                                    {format_file_size(file.read().get_size())}
+                                </td>
+                                <td class="px-4 py-2 flex justify-center text-center">
+                                    <SpinningIndicator />
+                                </td>
+                            </tr>
+                        </For>
                     </tbody>
                 </table>
             </div>
