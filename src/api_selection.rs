@@ -115,46 +115,6 @@ fn handle_api_key_submit(
     });
 }
 
-fn handle_confirm_button(
-    api_provider: RwSignal<ApiProvider>,
-    input_api_key: RwSignal<String>,
-    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
-    api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
-) {
-    if api_key_vstate.get() != ValidationState::Pending
-        && api_key_vstate.get() != ValidationState::Success
-    {
-        handle_api_key_submit(
-            api_provider,
-            input_api_key,
-            api_key_vstate,
-            api_client,
-            stage,
-        );
-    }
-}
-
-fn handle_enter_key_down(
-    api_provider: RwSignal<ApiProvider>,
-    input_api_key: RwSignal<String>,
-    api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
-    api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
-) {
-    if api_key_vstate.get() != ValidationState::Pending
-        && api_key_vstate.get() != ValidationState::Success
-    {
-        handle_api_key_submit(
-            api_provider,
-            input_api_key,
-            api_key_vstate,
-            api_client,
-            stage,
-        );
-    }
-}
-
 fn handle_back_button(
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
@@ -235,8 +195,11 @@ fn ApiKeyInputSection(
                         input_api_key.set(event_target_value(&ev));
                     }
                     on:keydown=move |ev| {
-                        if ev.key_code() != 0 && ev.key() == "Enter" {
-                            handle_enter_key_down(
+                        if ev.key_code() != 0 && ev.key() == "Enter"
+                            && api_key_vstate.get() != ValidationState::Pending
+                            && api_key_vstate.get() != ValidationState::Success
+                        {
+                            handle_api_key_submit(
                                 api_provider,
                                 input_api_key,
                                 api_key_vstate,
@@ -252,13 +215,17 @@ fn ApiKeyInputSection(
 
                 <button
                     on:click=move |_| {
-                        handle_confirm_button(
-                            api_provider,
-                            input_api_key,
-                            api_key_vstate,
-                            api_client,
-                            stage,
-                        );
+                        if api_key_vstate.get() != ValidationState::Pending
+                            && api_key_vstate.get() != ValidationState::Success
+                        {
+                            handle_api_key_submit(
+                                api_provider,
+                                input_api_key,
+                                api_key_vstate,
+                                api_client,
+                                stage,
+                            );
+                        }
                     }
                     disabled=move || api_key_vstate.get() == ValidationState::Pending
                     class=move || {
@@ -301,13 +268,17 @@ fn FreeApiChoiceSection(
 
                 <button
                     on:click=move |_| {
-                        handle_confirm_button(
-                            api_provider,
-                            input_api_key,
-                            api_key_vstate,
-                            api_client,
-                            stage,
-                        );
+                        if api_key_vstate.get() != ValidationState::Pending
+                            && api_key_vstate.get() != ValidationState::Success
+                        {
+                            handle_api_key_submit(
+                                api_provider,
+                                input_api_key,
+                                api_key_vstate,
+                                api_client,
+                                stage,
+                            );
+                        }
                     }
                     disabled=move || api_key_vstate.get() == ValidationState::Pending
                     class=move || {

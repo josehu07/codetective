@@ -1,12 +1,12 @@
 //! Step 2 section: import/retrieve code for analysis
 
-use std::cmp;
-
-use leptos::html::Div;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use leptos::web_sys::HtmlTextAreaElement;
 
+use web_sys::DragEvent;
+
+use gloo_file::futures::read_as_text;
+use gloo_file::FileList;
 use gloo_timers::future::TimeoutFuture;
 
 use crate::file::{CodeGroup, MAX_FILE_SIZE, MAX_NUM_FILES};
@@ -162,64 +162,69 @@ fn handle_code_text_submit(
     });
 }
 
-fn handle_url_confirm_button(
+fn handle_code_files_upload(
     import_method: RwSignal<ImportMethod>,
-    input_code_url: RwSignal<String>,
+    file_list: FileList,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
     stage: RwSignal<Stage>,
 ) {
-    if code_in_vstate.get() != ValidationState::Pending
-        && code_in_vstate.get() != ValidationState::Success
-    {
-        handle_code_url_submit(
-            import_method,
-            input_code_url,
-            code_in_vstate,
-            code_group,
-            stage,
-        );
-    }
-}
+    // if file.size() > MAX_FILE_SIZE as f64 {
+    //     log::warn!("File size too large: {}KB", file.size() / 1024.0);
+    //     code_in_vstate.set(ValidationState::Failure(CodeImportError::limit(&format!(
+    //         "File size exceeds limit of {}KB",
+    //         MAX_FILE_SIZE / 1024
+    //     ))));
+    //     return;
+    // }
 
-fn handle_url_enter_key_down(
-    import_method: RwSignal<ImportMethod>,
-    input_code_url: RwSignal<String>,
-    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
-    code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
-) {
-    if code_in_vstate.get() != ValidationState::Pending
-        && code_in_vstate.get() != ValidationState::Success
-    {
-        handle_code_url_submit(
-            import_method,
-            input_code_url,
-            code_in_vstate,
-            code_group,
-            stage,
-        );
-    }
-}
+    // code_in_vstate.set(ValidationState::Pending);
 
-fn handle_text_confirm_button(
-    import_method: RwSignal<ImportMethod>,
-    input_code_text: RwSignal<String>,
-    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
-    code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
-) {
-    if code_in_vstate.get() != ValidationState::Pending
-        && code_in_vstate.get() != ValidationState::Success
-    {
-        handle_code_text_submit(
-            import_method,
-            input_code_text,
-            code_in_vstate,
-            code_group,
-            stage,
-        );
-    }
+    // spawn_local(async move {
+    //     log::info!(
+    //         "Step 2 validating: importing file '{}' from {}...",
+    //         file.name(),
+    //         import_method.get().name()
+    //     );
+
+    //     // Read the file content
+    //     let file_content = match read_as_text(&file).await {
+    //         Ok(content) => content,
+    //         Err(err) => {
+    //             log::error!("Failed to read file: {}", err);
+    //             code_in_vstate.set(ValidationState::Failure(CodeImportError::parse(
+    //                 "Failed to read file content",
+    //             )));
+    //             return;
+    //         }
+    //     };
+
+    //     let mut code_group_inner = code_group.write();
+    //     match code_group_inner.add_local(file_content).await {
+    //         Ok(()) => {
+    //             code_in_vstate.set(ValidationState::Success);
+
+    //             // small delay before proceeding to next stage
+    //             TimeoutFuture::new(500).await;
+
+    //             log::info!(
+    //                 "Step 2 confirmed: imported {} file(s) from {}",
+    //                 code_group_inner.num_files(),
+    //                 import_method.get().name()
+    //             );
+    //             stage.set(Stage::CodeImported);
+    //         }
+
+    //         Err(err) => {
+    //             log::error!(
+    //                 "Code import from {} failed: {}",
+    //                 import_method.get().name(),
+    //                 err
+    //             );
+    //             code_in_vstate.set(ValidationState::Failure(err));
+    //         }
+    //     }
+    // });
 }
 
 fn handle_back_button(
@@ -300,8 +305,11 @@ fn ImportFromUrlToSection(
                         input_code_url.set(event_target_value(&ev));
                     }
                     on:keydown=move |ev| {
-                        if ev.key_code() != 0 && ev.key() == "Enter" {
-                            handle_url_enter_key_down(
+                        if ev.key_code() != 0 && ev.key() == "Enter"
+                            && code_in_vstate.get() != ValidationState::Pending
+                            && code_in_vstate.get() != ValidationState::Success
+                        {
+                            handle_code_url_submit(
                                 import_method,
                                 input_code_url,
                                 code_in_vstate,
@@ -317,13 +325,17 @@ fn ImportFromUrlToSection(
 
                 <button
                     on:click=move |_| {
-                        handle_url_confirm_button(
-                            import_method,
-                            input_code_url,
-                            code_in_vstate,
-                            code_group,
-                            stage,
-                        );
+                        if code_in_vstate.get() != ValidationState::Pending
+                            && code_in_vstate.get() != ValidationState::Success
+                        {
+                            handle_code_url_submit(
+                                import_method,
+                                input_code_url,
+                                code_in_vstate,
+                                code_group,
+                                stage,
+                            );
+                        }
                     }
                     disabled=move || code_in_vstate.get() == ValidationState::Pending
                     class=move || {
@@ -348,8 +360,137 @@ fn ImportFromUrlToSection(
 }
 
 #[component]
-fn ImportFromUploadSection() -> impl IntoView {
-    unimplemented!()
+fn ImportFromUploadSection(
+    import_method: RwSignal<ImportMethod>,
+    code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    code_group: RwSignal<CodeGroup>,
+    stage: RwSignal<Stage>,
+) -> impl IntoView {
+    let is_dragging = RwSignal::new(false);
+    let file_input_ref = NodeRef::new();
+
+    view! {
+        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <div class="w-full flex items-center space-x-4">
+                    <label for="file-upload" class="text-base text-gray-900 whitespace-nowrap">
+                        Upload files or archive:
+                    </label>
+                    <div class="flex-1"></div>
+                    <HoverInfoIcon text="Upload a code file or an archive. Size per file limited to 100KB. Number of files (if archive) capped to 100 (but may improve later)." />
+                </div>
+
+                <div
+                    class=move || {
+                        let base = "w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors flex flex-col items-center justify-center";
+                        if is_dragging.get() {
+                            format!("{} bg-blue-50 border-blue-400", base)
+                        } else if code_in_vstate.get() == ValidationState::Pending {
+                            format!("{} bg-gray-100 border-gray-300 cursor-not-allowed", base)
+                        } else {
+                            format!(
+                                "{} bg-gray-50 border-gray-300 hover:border-gray-400 hover:bg-gray-100",
+                                base,
+                            )
+                        }
+                    }
+                    on:dragover=move |ev| {
+                        ev.prevent_default();
+                        is_dragging.set(true);
+                    }
+                    on:dragleave=move |ev| {
+                        ev.prevent_default();
+                        is_dragging.set(false);
+                    }
+                    on:drop=move |ev: DragEvent| {
+                        ev.prevent_default();
+                        is_dragging.set(false);
+                        if let Some(data_transfer) = ev.data_transfer() {
+                            if let Some(file_list) = data_transfer.files() {
+                                handle_code_files_upload(
+                                    import_method,
+                                    file_list.into(),
+                                    code_in_vstate,
+                                    code_group,
+                                    stage,
+                                );
+                            }
+                        }
+                    }
+                    on:click=move |_| {
+                        if code_in_vstate.get() != ValidationState::Pending {
+                            if let Some(input) = file_input_ref.get() {
+                                input.click();
+                            }
+                        }
+                    }
+                >
+                    <input
+                        type="file"
+                        id="file-upload"
+                        accept="*"
+                        class="hidden"
+                        node_ref=file_input_ref
+                        on:change=move |_| {
+                            if let Some(input) = file_input_ref.get() {
+                                if let Some(file_list) = input.files() {
+                                    handle_code_files_upload(
+                                        import_method,
+                                        file_list.into(),
+                                        code_in_vstate,
+                                        code_group,
+                                        stage,
+                                    );
+                                }
+                            }
+                        }
+                        on:click=move |ev| {
+                            ev.stop_propagation();
+                        }
+                        prop:disabled=move || code_in_vstate.get() == ValidationState::Pending
+                    />
+
+                    <svg
+                        class="w-12 h-12 text-gray-400 mb-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        ></path>
+                    </svg>
+
+                    <div class="text-lg font-medium text-gray-700">
+                        {move || {
+                            if is_dragging.get() {
+                                "Drop file here..."
+                            } else {
+                                "Drag & drop file here, or Click to browse..."
+                            }
+                        }}
+                    </div>
+                </div>
+
+                {move || {
+                    (code_in_vstate.get() != ValidationState::Idle)
+                        .then_some(
+                            view! {
+                                <div class="flex w-full items-center justify-end">
+                                    <ValidationIndicator code_in_vstate />
+                                </div>
+                            },
+                        )
+                }}
+            </div>
+
+            <ValidationErrorMsg code_in_vstate />
+        </div>
+    }
 }
 
 #[component]
@@ -366,10 +507,10 @@ fn ImportFromPasteSection(
             <div class="flex flex-col items-center justify-center space-y-4">
                 <div class="w-full flex items-center space-x-4">
                     <label for="code-textbox" class="text-base text-gray-900 whitespace-nowrap">
-                        Paste code:
+                        Paste or type in code:
                     </label>
                     <div class="flex-1"></div>
-                    <HoverInfoIcon text="Paste your source code directly into the text box. Size limited to 100KB, but code files should normally be much smaller than that." />
+                    <HoverInfoIcon text="Paste your source code directly into the text box. Size limited to 100KB, but code files are normally much smaller than that." />
                 </div>
 
                 // wrap textarea in a div with almost identical styling so that
@@ -398,13 +539,17 @@ fn ImportFromPasteSection(
                 <div class="flex items-center justify-end space-x-4 w-full">
                     <button
                         on:click=move |_| {
-                            handle_text_confirm_button(
-                                import_method,
-                                input_code_text,
-                                code_in_vstate,
-                                code_group,
-                                stage,
-                            );
+                            if code_in_vstate.get() != ValidationState::Pending
+                                && code_in_vstate.get() != ValidationState::Success
+                            {
+                                handle_code_text_submit(
+                                    import_method,
+                                    input_code_text,
+                                    code_in_vstate,
+                                    code_group,
+                                    stage,
+                                );
+                            }
                         }
                         disabled=move || code_in_vstate.get() == ValidationState::Pending
                         class=move || {
@@ -465,7 +610,7 @@ fn CodeRetrieveExpandedView(
                 >
                     Upload
                     <br />
-                    file or zip
+                    files or zip
                 </button>
                 <button
                     on:click=move |_| handle_import_method_button(
@@ -491,6 +636,20 @@ fn CodeRetrieveExpandedView(
                                 code_group
                                 stage
                                 placeholder="https://github.com/josehu07/codetective/tree/main"
+                            />
+                        },
+                    )
+            }}
+
+            {move || {
+                (import_method.get() == ImportMethod::Upload)
+                    .then_some(
+                        view! {
+                            <ImportFromUploadSection
+                                import_method
+                                code_in_vstate
+                                code_group
+                                stage
                             />
                         },
                     )
