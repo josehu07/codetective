@@ -39,6 +39,7 @@ module.exports = {
                 'fade-in': 'fade-in 0.4s ease-out both',
                 'shake-fast': 'shake 0.5s ease-in-out both',
                 'bounce-mid': 'bounce 0.8s ease-in-out both',
+                'pulse-fast': 'pulse 0.6s ease-in-out infinite',
             },
             transitionProperty: {
                 'all': 'all',

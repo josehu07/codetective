@@ -1,6 +1,9 @@
 //! Main entrance to the codetective web app.
 
+use std::collections::VecDeque;
+
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 use leptos_meta::{provide_meta_context, Link, Stylesheet, Title};
 
@@ -14,7 +17,7 @@ pub(crate) mod code_retrieve;
 use code_retrieve::{CodeRetrieve, ImportMethod};
 
 pub(crate) mod detection_pass;
-use detection_pass::DetectionPass;
+use detection_pass::{detection_analysis_task, DetectionPass, TaskQueue};
 
 pub(crate) mod apis;
 
@@ -27,11 +30,10 @@ use utils::NBSP;
 
 /// Stage enum that controls where are we in the workflow.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub(crate) enum Stage {
+pub(crate) enum StepStage {
     Initial,
-    ApiProvided,
-    CodeImported,
-    DetectionCp,
+    ApiDone,
+    CodeGot,
 }
 
 /// Step-generic input validation state.
@@ -46,7 +48,7 @@ enum ValidationState<E> {
 /// Currently, the app only has one route, which is the home page.
 #[component]
 fn Home() -> impl IntoView {
-    let stage = RwSignal::new(Stage::Initial);
+    let stage = RwSignal::new(StepStage::Initial);
 
     let api_client = RwSignal::new(None);
     let code_group = RwSignal::new(CodeGroup::new());
@@ -59,6 +61,24 @@ fn Home() -> impl IntoView {
     let input_code_url = RwSignal::new(String::new());
     let input_code_text = RwSignal::new(String::new());
     let code_in_vstate = RwSignal::new(ValidationState::Idle);
+
+    let task_queue = RwSignal::new(VecDeque::new());
+    let num_finished = RwSignal::new(0);
+    let detection_cp = RwSignal::new(false);
+
+    // spawn the detection analysis task ahead of time, which periodically
+    // polls the task queue
+    spawn_local(async move {
+        log::info!("Detection analysis task created and polling...");
+        detection_analysis_task(
+            api_client,
+            code_group,
+            task_queue,
+            num_finished,
+            detection_cp,
+        )
+        .await;
+    });
 
     view! {
         <Title text="Codetective" />
@@ -87,6 +107,9 @@ fn Home() -> impl IntoView {
                         api_client
                         code_in_vstate
                         code_group
+                        task_queue
+                        num_finished
+                        detection_cp
                         stage
                     />
 
@@ -97,11 +120,14 @@ fn Home() -> impl IntoView {
                         input_code_text
                         code_in_vstate
                         code_group
+                        task_queue
+                        num_finished
+                        detection_cp
                         stage
                     />
 
                     // step 3:
-                    <DetectionPass api_client code_group stage />
+                    <DetectionPass api_client code_group task_queue detection_cp stage />
                 </div>
 
                 // footer text and links

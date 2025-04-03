@@ -12,7 +12,7 @@ use crate::utils::gadgets::{
     StepHeaderExpanded, SuccessIndicator,
 };
 use crate::utils::{NBHY, NBSP};
-use crate::{CodeGroup, Stage, ValidationState};
+use crate::{CodeGroup, StepStage, TaskQueue, ValidationState};
 
 /// Enum that controls the state of API provider selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -62,7 +62,7 @@ fn handle_api_key_submit(
     input_api_key: RwSignal<String>,
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) {
     let current_api_provider = api_provider.get();
     let mut api_key = input_api_key.read().trim().to_string();
@@ -100,7 +100,7 @@ fn handle_api_key_submit(
                     chosen_provider.name(),
                     api_key
                 );
-                stage.set(Stage::ApiProvided);
+                stage.set(StepStage::ApiDone);
             }
 
             Err(err) => {
@@ -119,14 +119,22 @@ fn handle_back_button(
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) {
     api_key_vstate.set(ValidationState::Idle);
     code_in_vstate.set(ValidationState::Idle);
     code_group.update(|cg| {
         cg.reset();
     });
-    stage.set(Stage::Initial);
+    task_queue.update(|queue| {
+        queue.clear();
+    });
+    num_finished.set(0);
+    detection_cp.set(false);
+    stage.set(StepStage::Initial);
 
     log::info!("Step 1 rolled back: resetting API key validation stage");
 }
@@ -176,7 +184,7 @@ fn ApiKeyInputSection(
     input_api_key: RwSignal<String>,
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
@@ -255,7 +263,7 @@ fn FreeApiChoiceSection(
     input_api_key: RwSignal<String>,
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
@@ -308,7 +316,7 @@ fn ApiSelectionExpandedView(
     input_api_key: RwSignal<String>,
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     api_client: RwSignal<Option<ApiClient>>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm animate-fade-in">
@@ -471,7 +479,10 @@ fn ApiSelectionCollapsedView(
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm">
@@ -491,6 +502,9 @@ fn ApiSelectionCollapsedView(
                                     api_key_vstate,
                                     code_in_vstate,
                                     code_group,
+                                    task_queue,
+                                    num_finished,
+                                    detection_cp,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
@@ -513,11 +527,14 @@ pub(crate) fn ApiSelection(
     api_client: RwSignal<Option<ApiClient>>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         {move || {
-            (stage.get() == Stage::Initial)
+            (stage.get() == StepStage::Initial)
                 .then_some(
                     view! {
                         <ApiSelectionExpandedView
@@ -532,7 +549,7 @@ pub(crate) fn ApiSelection(
         }}
 
         {move || {
-            (stage.get() > Stage::Initial)
+            (stage.get() > StepStage::Initial)
                 .then_some(
                     view! {
                         <ApiSelectionCollapsedView
@@ -540,6 +557,9 @@ pub(crate) fn ApiSelection(
                             api_key_vstate
                             code_in_vstate
                             code_group
+                            task_queue
+                            num_finished
+                            detection_cp
                             stage
                         />
                     },

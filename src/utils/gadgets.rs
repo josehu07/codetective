@@ -1,5 +1,7 @@
 //! Common reusable web page gadgets.
 
+use std::cmp;
+
 use leptos::prelude::*;
 
 use crate::utils::NBSP;
@@ -30,6 +32,27 @@ pub(crate) fn SpinningIndicator() -> impl IntoView {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
             </svg>
+        </div>
+    }
+}
+
+/// A row of blinking dots.
+#[component]
+pub(crate) fn BlinkDotsIndicator() -> impl IntoView {
+    view! {
+        <div class="flex justify-center">
+            <div
+                class="w-1.5 h-1.5 mx-0.5 bg-gray-500 rounded-full animate-pulse-fast"
+                style="animation-delay: 0s"
+            ></div>
+            <div
+                class="w-1.5 h-1.5 mx-0.5 bg-gray-500 rounded-full animate-pulse-fast"
+                style="animation-delay: 0.2s"
+            ></div>
+            <div
+                class="w-1.5 h-1.5 mx-0.5 bg-gray-500 rounded-full animate-pulse-fast"
+                style="animation-delay: 0.4s"
+            ></div>
         </div>
     }
 }
@@ -120,6 +143,36 @@ pub(crate) fn HoverInfoIcon(text: &'static str) -> impl IntoView {
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
             </svg>
+        </div>
+    }
+}
+
+/// A block that shows the percentage AI authorship result on it, and that
+/// also shows an associated message when hovered over.
+#[component]
+pub(crate) fn HoverResultDiv(percent: Option<u8>, message: String) -> impl IntoView {
+    let percent_s = match percent {
+        Some(p) => format!("{}%", cmp::min(p, 100)),
+        None => "-N/A-".to_string(),
+    };
+
+    let show_popup = RwSignal::new(false);
+
+    view! {
+        <div class="relative">
+            <div
+                class="w-16 h-6 leading-6 bg-gray-100 hover:bg-gray-200 rounded-md text-center align-middle text-base font-medium cursor-help animate-fade-in"
+                on:mouseenter=move |_| show_popup.set(true)
+                on:mouseleave=move |_| show_popup.set(false)
+            >
+                {percent_s}
+            </div>
+
+            <Show when=move || show_popup.get()>
+                <div class="absolute z-40 p-2 bg-gray-700 text-white text-sm rounded shadow-lg -mt-1 right-full mr-2 w-max max-w-xs">
+                    {message.clone()}
+                </div>
+            </Show>
         </div>
     }
 }

@@ -1,5 +1,6 @@
 //! Code file (or collection of files) import driver.
 
+use std::borrow::Cow;
 use std::collections::{hash_map, HashMap};
 
 use leptos::prelude::*;
@@ -22,8 +23,8 @@ pub(crate) const MAX_NUM_FILES: usize = 100;
 pub(crate) const MAX_FILE_SIZE: usize = 100 * 1024; // 100KB
 
 // Display cut-off lengths in table.
-const PATH_LENGTH_CUTOFF: usize = 47;
-const LANG_LENGTH_CUTOFF: usize = 14;
+const PATH_LENGTH_CUTOFF: usize = 36;
+const LANG_LENGTH_CUTOFF: usize = 10;
 
 /// Handle to a single code file.
 pub(crate) enum CodeFile {
@@ -87,6 +88,30 @@ impl CodeFile {
             "-".to_string()
         }
     }
+
+    /// Fetches the actual content of the text file, making web requests if necessary.
+    pub(crate) async fn content(&self, client: &Client) -> Result<Cow<String>, CodeImportError> {
+        match self {
+            CodeFile::Local { content, .. } => Ok(Cow::Borrowed(content)),
+
+            CodeFile::Remote { url, .. } => {
+                let resp = client.get(url.clone()).send().await?;
+
+                if resp.status().is_success() {
+                    let text = resp.text().await?;
+                    Ok(Cow::Owned(text))
+                } else {
+                    // probably network error or authorization failure
+                    let status = resp.status();
+                    let text = resp.text().await?;
+                    Err(CodeImportError::status(format!(
+                        "file content fetch failed with {}: {}",
+                        status, text,
+                    )))
+                }
+            }
+        }
+    }
 }
 
 /// Code import driver.
@@ -107,6 +132,12 @@ impl CodeGroup {
         }
     }
 
+    /// Get a references to the HTTP client for file fetching.
+    #[inline]
+    pub(crate) fn cg_client(&self) -> &Client {
+        &self.client
+    }
+
     /// Get the number of files.
     #[inline]
     pub(crate) fn num_files(&self) -> usize {
@@ -115,7 +146,7 @@ impl CodeGroup {
 
     /// Get the boolean of whether any file had been skipped.
     #[inline]
-    pub(crate) fn skipped(&self) -> bool {
+    pub(crate) fn has_skipped(&self) -> bool {
         self.skipped
     }
 

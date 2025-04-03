@@ -15,7 +15,7 @@ use crate::utils::gadgets::{
     StepHeaderExpanded, SuccessIndicator,
 };
 use crate::utils::NBSP;
-use crate::{Stage, ValidationState};
+use crate::{StepStage, TaskQueue, ValidationState};
 
 /// Enum that controls the state of code retrieval method selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -57,7 +57,7 @@ fn handle_code_url_submit(
     input_code_url: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) {
     let current_import_method = import_method.get();
     let code_url = input_code_url.read().trim().to_string();
@@ -92,7 +92,7 @@ fn handle_code_url_submit(
                     code_group_inner.num_files(),
                     current_import_method.name()
                 );
-                stage.set(Stage::CodeImported);
+                stage.set(StepStage::CodeGot);
             }
 
             Err(err) => {
@@ -112,7 +112,7 @@ fn handle_code_text_submit(
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) {
     let current_import_method = import_method.get();
     let code_text = input_code_text.read().trim().to_string();
@@ -147,7 +147,7 @@ fn handle_code_text_submit(
                     code_group_inner.num_files(),
                     current_import_method.name()
                 );
-                stage.set(Stage::CodeImported);
+                stage.set(StepStage::CodeGot);
             }
 
             Err(err) => {
@@ -167,7 +167,7 @@ fn handle_code_files_upload(
     file_list: FileList,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) {
     let current_import_method = import_method.get();
 
@@ -201,7 +201,7 @@ fn handle_code_files_upload(
                     code_group_inner.num_files(),
                     current_import_method.name()
                 );
-                stage.set(Stage::CodeImported);
+                stage.set(StepStage::CodeGot);
             }
 
             Err(err) => {
@@ -219,13 +219,21 @@ fn handle_code_files_upload(
 fn handle_back_button(
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) {
     code_in_vstate.set(ValidationState::Idle);
     code_group.update(|cg| {
         cg.reset();
     });
-    stage.set(Stage::ApiProvided);
+    task_queue.update(|queue| {
+        queue.clear();
+    });
+    num_finished.set(0);
+    detection_cp.set(false);
+    stage.set(StepStage::ApiDone);
 
     log::info!("Step 2 rolled back: resetting code import validation stage");
 }
@@ -276,7 +284,7 @@ fn ImportFromUrlToSection(
     input_code_url: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
@@ -354,7 +362,7 @@ fn ImportFromUploadSection(
     import_method: RwSignal<ImportMethod>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     let is_dragging = RwSignal::new(false);
     let file_input_ref = NodeRef::new();
@@ -492,7 +500,7 @@ fn ImportFromPasteSection(
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
@@ -574,7 +582,7 @@ fn CodeRetrieveExpandedView(
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm animate-fade-in">
@@ -672,7 +680,10 @@ fn CodeRetrieveCollapsedView(
     import_method: RwSignal<ImportMethod>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm">
@@ -695,7 +706,7 @@ fn CodeRetrieveCollapsedView(
             </div>
 
             {move || {
-                (code_group.read().skipped())
+                (code_group.read().has_skipped())
                     .then_some(
                         view! {
                             <div class="text-orange-700 text-base font-mono mt-4 text-center animate-fade-in">
@@ -725,6 +736,9 @@ fn CodeRetrieveCollapsedView(
                                 on:click=move |_| handle_back_button(
                                     code_in_vstate,
                                     code_group,
+                                    task_queue,
+                                    num_finished,
+                                    detection_cp,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
@@ -746,11 +760,14 @@ pub(crate) fn CodeRetrieve(
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
-    stage: RwSignal<Stage>,
+    task_queue: RwSignal<TaskQueue>,
+    num_finished: RwSignal<usize>,
+    detection_cp: RwSignal<bool>,
+    stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
         {move || {
-            (stage.get() == Stage::ApiProvided)
+            (stage.get() == StepStage::ApiDone)
                 .then_some(
                     view! {
                         <CodeRetrieveExpandedView
@@ -766,10 +783,18 @@ pub(crate) fn CodeRetrieve(
         }}
 
         {move || {
-            (stage.get() > Stage::ApiProvided)
+            (stage.get() > StepStage::ApiDone)
                 .then_some(
                     view! {
-                        <CodeRetrieveCollapsedView import_method code_in_vstate code_group stage />
+                        <CodeRetrieveCollapsedView
+                            import_method
+                            code_in_vstate
+                            code_group
+                            task_queue
+                            num_finished
+                            detection_cp
+                            stage
+                        />
                     },
                 )
         }}
