@@ -10,7 +10,7 @@ use serde_json::Number;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 
-use crate::utils::error::ApiKeyCheckError;
+use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
 /// OpenRouter API request URL prefix.
 const OPENRT_API_PREFIX: &str = "https://openrouter.ai/api/v1";
@@ -30,13 +30,12 @@ pub(crate) struct ApiClient {
 }
 
 /// OpenRouter API validation response body.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct ApiKeyCheckResponse {
     data: ApiKeyCheckResponseData,
 }
 
-/// OpenRouter API validation response body: data field.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct ApiKeyCheckResponseData {
     label: String,
     limit: Option<Number>,
@@ -100,5 +99,10 @@ impl ApiClient {
         }
 
         Ok(())
+    }
+
+    /// Makes an detection API call and returns the response.
+    pub(crate) async fn call(&self, prompt: String) -> Result<(u8, String), ApiMakeCallError> {
+        unimplemented!()
     }
 }

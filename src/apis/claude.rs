@@ -10,7 +10,7 @@ use serde_json::Number;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use reqwest::Client;
 
-use crate::utils::error::ApiKeyCheckError;
+use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
 /// Claude API request URL prefix.
 const CLAUDE_API_PREFIX: &str = "https://api.anthropic.com/v1";
@@ -32,7 +32,7 @@ pub(crate) struct ApiClient {
 }
 
 /// Claude API validation response body.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct ApiKeyCheckResponse {
     #[serde(rename = "type")]
     o_type: String,
@@ -100,5 +100,10 @@ impl ApiClient {
         }
 
         Ok(())
+    }
+
+    /// Makes an detection API call and returns the response.
+    pub(crate) async fn call(&self, prompt: String) -> Result<(u8, String), ApiMakeCallError> {
+        unimplemented!()
     }
 }

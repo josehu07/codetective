@@ -160,3 +160,49 @@ impl From<reqwest::Error> for CodeImportError {
         CodeImportError::status(err)
     }
 }
+
+/// Error type for detection API call.
+#[derive(Clone, PartialEq, Debug)]
+pub(crate) enum ApiMakeCallError {
+    Parse(String),
+    Status(String),
+}
+
+impl ApiMakeCallError {
+    pub(crate) fn parse(msg: impl ToString) -> Self {
+        ApiMakeCallError::Parse(msg.to_string())
+    }
+
+    pub(crate) fn status(msg: impl ToString) -> Self {
+        ApiMakeCallError::Status(msg.to_string())
+    }
+}
+
+impl fmt::Display for ApiMakeCallError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ApiMakeCallError::Parse(msg) => write!(f, "Parse error: {}", msg),
+            ApiMakeCallError::Status(msg) => write!(f, "Status error: {}", msg),
+        }
+    }
+}
+
+impl Error for ApiMakeCallError {}
+
+impl From<serde_json::Error> for ApiMakeCallError {
+    fn from(err: serde_json::Error) -> Self {
+        ApiMakeCallError::parse(err)
+    }
+}
+
+impl From<reqwest::header::InvalidHeaderValue> for ApiMakeCallError {
+    fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
+        ApiMakeCallError::parse(err)
+    }
+}
+
+impl From<reqwest::Error> for ApiMakeCallError {
+    fn from(err: reqwest::Error) -> Self {
+        ApiMakeCallError::status(err)
+    }
+}

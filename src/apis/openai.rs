@@ -10,7 +10,7 @@ use serde_json::Number;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 
-use crate::utils::error::ApiKeyCheckError;
+use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
 /// OpenAI API request URL prefix.
 const OPENAI_API_PREFIX: &str = "https://api.openai.com/v1";
@@ -29,7 +29,7 @@ pub(crate) struct ApiClient {
 }
 
 /// OpenAI API validation response body.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct ApiKeyCheckResponse {
     id: String,
     object: String,
@@ -84,5 +84,10 @@ impl ApiClient {
         }
 
         Ok(())
+    }
+
+    /// Makes an detection API call and returns the response.
+    pub(crate) async fn call(&self, prompt: String) -> Result<(u8, String), ApiMakeCallError> {
+        unimplemented!()
     }
 }

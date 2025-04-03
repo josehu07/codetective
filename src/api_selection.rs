@@ -188,7 +188,7 @@ fn ApiKeyInputSection(
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
-        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+        <div class="pt-6 pb-2 px-2 animate-slide-down origin-top">
             <div class="flex items-center justify-center space-x-4">
                 <label for="api-key" class="text-base text-gray-900 whitespace-nowrap">
                     Enter API Key:
@@ -266,7 +266,7 @@ fn FreeApiChoiceSection(
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
-        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+        <div class="pt-6 pb-2 px-2 animate-slide-down origin-top">
             <div class="flex items-center justify-center space-x-4">
                 <div class="text-base text-gray-900 whitespace-nowrap">
                     Use a provider of our choice that currently grants limited free{NBHY}tier quota.

@@ -288,7 +288,7 @@ fn ImportFromUrlToSection(
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
-        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+        <div class="pt-6 pb-2 px-2 animate-slide-down origin-top">
             <div class="flex items-center justify-center space-x-4">
                 <label for="code-url" class="text-base text-gray-900 whitespace-nowrap">
                     Enter URL:
@@ -319,7 +319,7 @@ fn ImportFromUrlToSection(
                     class="flex-1 p-2 max-w-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 />
 
-                <HoverInfoIcon text="A URL link to either a raw online file or a GitHub repository. Size per file limited to 100KB. Number of files (if repo) capped to 100 (but may improve later)." />
+                <HoverInfoIcon text="A URL link to a raw online file or a GitHub repository. Size per file limited to 100KB. Number of files (if repo) capped to 100 (but may improve later)." />
 
                 <button
                     on:click=move |_| {
@@ -368,7 +368,7 @@ fn ImportFromUploadSection(
     let file_input_ref = NodeRef::new();
 
     view! {
-        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+        <div class="pt-6 pb-2 px-2 animate-slide-down origin-top">
             <div class="flex flex-col items-center justify-center space-y-4">
                 <div class="w-full flex items-center space-x-4">
                     <label for="file-upload" class="text-base text-gray-900 whitespace-nowrap">
@@ -504,7 +504,7 @@ fn ImportFromPasteSection(
     placeholder: &'static str,
 ) -> impl IntoView {
     view! {
-        <div class="pt-6 pb-2 px-2 overflow-hidden animate-slide-down origin-top">
+        <div class="pt-6 pb-2 px-2 animate-slide-down origin-top">
             <div class="flex flex-col items-center justify-center space-y-4">
                 <div class="w-full flex items-center space-x-4">
                     <label for="code-textbox" class="text-base text-gray-900 whitespace-nowrap">

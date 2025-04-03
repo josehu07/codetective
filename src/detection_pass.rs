@@ -8,9 +8,10 @@ use gloo_timers::future::TimeoutFuture;
 
 use crate::apis::ApiClient;
 use crate::file::{CodeFile, CodeGroup};
+use crate::utils::error::ApiMakeCallError;
 use crate::utils::gadgets::{
-    BlinkDotsIndicator, FailureIndicator, HoverResultDiv, SpinningIndicator, StepHeaderExpanded,
-    SuccessIndicator,
+    BlinkDotsIndicator, FailureIndicator, HoverInfoIcon, HoverResultDiv, SpinningIndicator,
+    StepHeaderExpanded, SuccessIndicator,
 };
 use crate::{StepStage, NBSP};
 
@@ -43,6 +44,16 @@ fn format_file_size(size_opt: Option<usize>) -> String {
     }
 }
 
+async fn detection_api_call(client: &ApiClient, code: &str) -> DetectionStatus {
+    match client.call(code).await {
+        Ok((percent, reason)) => DetectionStatus::Success((percent, reason)),
+        Err(err) => DetectionStatus::Failure(match err {
+            ApiMakeCallError::Parse(_) => "Failed to parse API response. This could be due to unexpected model output format or truncation (despite being instructed otherwise), or due to rate limiting. Please try again later.",
+            ApiMakeCallError::Status(_) => "Network error when making the API call. This could be due to connection issues, model unavailability, authorization failure, or mostly likely, rate limiting. Please try again later.",
+        }.to_string()),
+    }
+}
+
 pub(crate) async fn detection_analysis_task(
     api_client: RwSignal<Option<ApiClient>>,
     code_group: RwSignal<CodeGroup>,
@@ -68,11 +79,8 @@ pub(crate) async fn detection_analysis_task(
                     .content(code_group.read_untracked().cg_client())
                     .await
                 {
-                    Ok(content) => {
-                        status.set(DetectionStatus::Success((
-                            (getrandom::u32().unwrap() % 101) as u8,
-                            "Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long ".to_string(),
-                        )));
+                    Ok(code) => {
+                        status.set(detection_api_call(client, &code).await);
                     }
                     Err(err) => {
                         log::error!("Analysis of file '{}' failed: {}", path, err);
@@ -170,7 +178,6 @@ fn FileDetectionRow(
 
 #[component]
 fn DetectionPassExpandedView(
-    api_client: RwSignal<Option<ApiClient>>,
     code_group: RwSignal<CodeGroup>,
     task_queue: RwSignal<TaskQueue>,
     detection_cp: RwSignal<bool>,
@@ -241,14 +248,10 @@ fn DetectionPassExpandedView(
                 (detection_cp.get())
                     .then_some(
                         view! {
-                            <div class="mt-6 mb-2 flex items-center justify-center space-x-8 w-full">
+                            <div class="mt-6 mb-2 flex items-center justify-center space-x-8 w-full animate-slide-down">
                                 <button
                                     on:click=move |_| {}
-                                    disabled=move || {}
-                                    class=move || {
-                                        let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors flex align-middle";
-                                        base
-                                    }
+                                    class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors flex align-middle"
                                 >
                                     Retry
                                     <svg
@@ -269,11 +272,7 @@ fn DetectionPassExpandedView(
 
                                 <button
                                     on:click=move |_| {}
-                                    disabled=move || {}
-                                    class=move || {
-                                        let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors flex align-middle";
-                                        base
-                                    }
+                                    class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors flex align-middle"
                                 >
                                     Download
                                     <svg
@@ -291,6 +290,10 @@ fn DetectionPassExpandedView(
                                         />
                                     </svg>
                                 </button>
+
+                                <div class="absolute right-0 z-20">
+                                    <HoverInfoIcon text="Don't fully trust the likelihood scores as they can be deceiving: oftentimes, well-written code by human would be categorized as AI-generated as they follow good coding standards. Be sure to read the comments on reasoning and make your own judgement." />
+                                </div>
                             </div>
                         },
                     )
@@ -302,7 +305,6 @@ fn DetectionPassExpandedView(
 /// The code retrieval step wrapped in one place.
 #[component]
 pub(crate) fn DetectionPass(
-    api_client: RwSignal<Option<ApiClient>>,
     code_group: RwSignal<CodeGroup>,
     task_queue: RwSignal<TaskQueue>,
     detection_cp: RwSignal<bool>,
@@ -313,7 +315,7 @@ pub(crate) fn DetectionPass(
             (stage.get() >= StepStage::CodeGot)
                 .then_some(
                     view! {
-                        <DetectionPassExpandedView api_client code_group task_queue detection_cp />
+                        <DetectionPassExpandedView code_group task_queue detection_cp />
                     },
                 )
         }}

@@ -69,7 +69,7 @@ fn Home() -> impl IntoView {
     // spawn the detection analysis task ahead of time, which periodically
     // polls the task queue
     spawn_local(async move {
-        log::info!("Detection analysis task created and polling...");
+        log::debug!("Detection analysis task created and polling...");
         detection_analysis_task(
             api_client,
             code_group,
@@ -127,11 +127,11 @@ fn Home() -> impl IntoView {
                     />
 
                     // step 3:
-                    <DetectionPass api_client code_group task_queue detection_cp stage />
+                    <DetectionPass code_group task_queue detection_cp stage />
                 </div>
 
                 // footer text and links
-                <footer class="mt-auto py-6 flex text-center justify-center">
+                <footer class="mt-auto pb-6 pt-8 flex text-center justify-center">
                     <span class="mr-3">
                         <a
                             href="https://github.com/josehu07/codetective"

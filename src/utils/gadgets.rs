@@ -128,21 +128,35 @@ pub(crate) fn FailureIndicator() -> impl IntoView {
 /// An information icon with custom hover title text.
 #[component]
 pub(crate) fn HoverInfoIcon(text: &'static str) -> impl IntoView {
+    let show_popup = RwSignal::new(false);
+
     view! {
-        <div class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help" title=text>
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        <div class="relative">
+            <div
+                class="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-help"
+                on:mouseenter=move |_| show_popup.set(true)
+                on:mouseleave=move |_| show_popup.set(false)
             >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-            </svg>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+            </div>
+
+            <Show when=move || show_popup.get()>
+                <div class="fixed bottom-0 left-2 z-40 p-2 bg-gray-800 text-white text-base text-left rounded shadow-lg w-max max-w-xl">
+                    {text}
+                </div>
+            </Show>
         </div>
     }
 }
@@ -155,13 +169,17 @@ pub(crate) fn HoverResultDiv(percent: Option<u8>, message: String) -> impl IntoV
         Some(p) => format!("{}%", cmp::min(p, 100)),
         None => "-N/A-".to_string(),
     };
+    let color_style = match percent {
+        Some(p) => blended_color(p),
+        None => "text-red-600 text-sm",
+    };
 
     let show_popup = RwSignal::new(false);
 
     view! {
         <div class="relative">
             <div
-                class="w-16 h-6 leading-6 bg-gray-100 hover:bg-gray-300 rounded-md text-center align-middle text-base font-medium cursor-help animate-fade-in"
+                class={format!("w-16 h-6 leading-6 bg-gray-100 hover:bg-gray-300 rounded-md text-center align-middle text-base font-medium cursor-help animate-fade-in {}", color_style)}
                 on:mouseenter=move |_| show_popup.set(true)
                 on:mouseleave=move |_| show_popup.set(false)
             >
@@ -169,11 +187,28 @@ pub(crate) fn HoverResultDiv(percent: Option<u8>, message: String) -> impl IntoV
             </div>
 
             <Show when=move || show_popup.get()>
-                <div class="fixed bottom-16 left-8 z-40 p-2 bg-gray-700 text-white text-sm rounded shadow-lg w-max max-w-lg">
+                <div class="fixed bottom-16 left-8 z-40 p-2 bg-gray-800 text-white text-base text-left rounded shadow-lg w-max max-w-lg">
                     {message.clone()}
                 </div>
             </Show>
         </div>
+    }
+}
+
+/// Calculates a blended color on a green-red spectrum given a ratio.
+/// Currently uses a hardcoded, pre-calculated interpolation.
+fn blended_color(red_percent: u8) -> &'static str {
+    match red_percent {
+        0..10 => "text-[#047608]",
+        10..20 => "text-[#197804]",
+        20..30 => "text-[#327904]",
+        30..40 => "text-[#4d7b04]",
+        40..50 => "text-[#687d04]",
+        50..60 => "text-[#7e7a05]",
+        60..70 => "text-[#806105]",
+        70..80 => "text-[#824705]",
+        80..90 => "text-[#832d05]",
+        90.. => "text-[#851205]",
     }
 }
 
