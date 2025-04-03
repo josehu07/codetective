@@ -12,7 +12,7 @@ use crate::utils::gadgets::{
     BlinkDotsIndicator, FailureIndicator, HoverResultDiv, SpinningIndicator, StepHeaderExpanded,
     SuccessIndicator,
 };
-use crate::StepStage;
+use crate::{StepStage, NBSP};
 
 /// Time-wise spacing between task queue pollinngs.
 const TASK_POLLING_DELAY: u32 = 1000; // 1 sec
@@ -71,7 +71,7 @@ pub(crate) async fn detection_analysis_task(
                     Ok(content) => {
                         status.set(DetectionStatus::Success((
                             (getrandom::u32().unwrap() % 101) as u8,
-                            "Some random reasoning".to_string(),
+                            "Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long Some random reasoning super long ".to_string(),
                         )));
                     }
                     Err(err) => {
@@ -180,19 +180,27 @@ fn DetectionPassExpandedView(
             <StepHeaderExpanded step=3 />
 
             {move || {
-                if detection_cp.get() {
-                    view! {
-                        <div class="text-lg font-semibold text-center text-gray-900 animate-slide-down">
-                            AI Authorship Detection Completed
-                        </div>
-                    }
-                } else {
-                    view! {
-                        <div class="text-xl text-center text-gray-900">
-                            Let the Analysis Begin...
-                        </div>
-                    }
-                }
+                (detection_cp.get())
+                    .then_some(
+                        view! {
+                            <div class="text-center text-gray-800 text-lg animate-slide-down">
+                                <span class="font-semibold">
+                                    AI Authorship Analyzed:{NBSP}{NBSP}
+                                </span>
+                                <span class="text-xl font-mono">See Likelihood Results</span>
+                            </div>
+                        },
+                    )
+            }}
+            {move || {
+                (!detection_cp.get())
+                    .then_some(
+                        view! {
+                            <div class="text-xl text-center text-gray-900">
+                                Let the Analysis Begin...
+                            </div>
+                        },
+                    )
             }}
 
             <div class="mt-6 mb-2 overflow-x-auto">
@@ -228,6 +236,65 @@ fn DetectionPassExpandedView(
                     </tbody>
                 </table>
             </div>
+
+            {move || {
+                (detection_cp.get())
+                    .then_some(
+                        view! {
+                            <div class="mt-6 mb-2 flex items-center justify-center space-x-8 w-full">
+                                <button
+                                    on:click=move |_| {}
+                                    disabled=move || {}
+                                    class=move || {
+                                        let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors flex align-middle";
+                                        base
+                                    }
+                                >
+                                    Retry
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="inline w-5 h-5 ml-2 my-auto"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                        />
+                                    </svg>
+                                </button>
+
+                                <button
+                                    on:click=move |_| {}
+                                    disabled=move || {}
+                                    class=move || {
+                                        let base = "px-4 py-2 bg-gray-500 text-white rounded-md shadow transition-colors flex align-middle";
+                                        base
+                                    }
+                                >
+                                    Download
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="inline w-5 h-5 ml-2 my-auto"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+                        },
+                    )
+            }}
         </div>
     }
 }

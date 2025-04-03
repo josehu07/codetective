@@ -692,7 +692,7 @@ fn CodeRetrieveCollapsedView(
             <div class="text-center text-gray-800 text-lg">
                 <span class="font-semibold">Code Source Imported:{NBSP}{NBSP}</span>
                 <span class="text-xl font-mono">
-                    {move || code_group.read().num_files()} {NBSP}file(s) {NBSP}
+                    {move || code_group.read().num_files()} {NBSP}File(s) {NBSP}
                     {move || {
                         code_group
                             .read()
@@ -741,9 +741,23 @@ fn CodeRetrieveCollapsedView(
                                     detection_cp,
                                     stage,
                                 )
-                                class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center text-white transition-colors"
+                                class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center align-middle text-white transition-colors"
                             >
                                 Back
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="w-5 h-5 ml-1"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M14 17C16.7614 17 19 14.7614 19 12C19 9.23858 16.7614 7 14 7H8M8 7L11 4M8 7L11 10"
+                                    />
+                                </svg>
                             </button>
                         },
                     )
