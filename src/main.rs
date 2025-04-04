@@ -9,9 +9,6 @@ use leptos::task::spawn_local;
 
 use leptos_meta::{provide_meta_context, Title};
 
-use leptos_router::components::{Route, Router, Routes};
-use leptos_router::StaticSegment;
-
 pub(crate) mod api_selection;
 use api_selection::{ApiProvider, ApiSelection};
 
@@ -203,13 +200,7 @@ fn Home() -> impl IntoView {
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    view! {
-        <Router>
-            <Routes fallback=|| "Page not found.">
-                <Route path=StaticSegment("") view=Home />
-            </Routes>
-        </Router>
-    }
+    view! { <Home /> }
 }
 
 fn main() {
