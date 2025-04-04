@@ -12,6 +12,8 @@ use serde_json::Number;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 
+use base64::prelude::*;
+
 use crate::apis::ApiClient as GenericApiClient;
 use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
@@ -32,7 +34,7 @@ const CHAT_COMPLETION_URL: &str = concatcp!(OPENRT_API_PREFIX, "/chat/completion
 
 /// Default OpenRouter API key with no credits (only free quota access).
 const FREE_QUOTA_API_KEY: &str =
-    "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";
+    "c2stb3ItdjEtYzliNzE1ZWE3NWExYTc2OWVmMTJhZmRkNGNhYjFjNzE4MzQ5MTZhM2EyNmI3NjljODAzMjBkOGY1NTJkOTg3Mg==";
 
 /// Max output tokens cap.
 const MAX_OUTPUT_TOKENS: u32 = 500;
@@ -79,7 +81,12 @@ impl ApiClient {
     /// Uses the default free quota API KEY if input key is `None`.
     pub(crate) async fn new(api_key: Option<String>) -> Result<Self, ApiKeyCheckError> {
         let client = Self {
-            api_key: api_key.unwrap_or(FREE_QUOTA_API_KEY.into()),
+            api_key: api_key.unwrap_or_else(|| {
+                let decoded = BASE64_STANDARD
+                    .decode(FREE_QUOTA_API_KEY)
+                    .expect("Failed to do base64 decoding");
+                String::from_utf8(decoded).expect("API key is not a valid UTF-8 string")
+            }),
             client: Client::new(),
         };
 

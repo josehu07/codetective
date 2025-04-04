@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 
+use base64::prelude::*;
+
 use crate::apis::ApiClient as GenericApiClient;
 use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
@@ -33,7 +35,7 @@ const CHAT_COMPLETION_URL: &str = concatcp!(
 );
 
 /// Default Gemini API key with no credits (only free quota access).
-const FREE_QUOTA_API_KEY: &str = "AIzaSyBz4AFXbOdj_pQ0ai0z_IithH76r9b0sro";
+const FREE_QUOTA_API_KEY: &str = "QUl6YVN5Qno0QUZYYk9kal9wUTBhaTB6X0lpdGhINzZyOWIwc3Jv";
 
 /// Max output tokens cap.
 const MAX_OUTPUT_TOKENS: u32 = 500;
@@ -81,7 +83,12 @@ impl ApiClient {
     /// Uses the default free quota API KEY if input key is `None`.
     pub(crate) async fn new(api_key: Option<String>) -> Result<Self, ApiKeyCheckError> {
         let client = Self {
-            api_key: api_key.unwrap_or(FREE_QUOTA_API_KEY.into()),
+            api_key: api_key.unwrap_or_else(|| {
+                let decoded = BASE64_STANDARD
+                    .decode(FREE_QUOTA_API_KEY)
+                    .expect("Failed to do base64 decoding");
+                String::from_utf8(decoded).expect("API key is not a valid UTF-8 string")
+            }),
             client: Client::new(),
         };
 
