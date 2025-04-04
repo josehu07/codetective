@@ -19,7 +19,7 @@ trunk serve --open
 Build with minimization optimizations with:
 
 ```bash
-trunk build --release -M
+trunk build --release -M --public-url="https://josehu.com/apps/codetective"
 ```
 
 ---
