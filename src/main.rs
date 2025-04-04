@@ -2,6 +2,8 @@
 
 use std::collections::VecDeque;
 
+use reqwest::Client as CgfClient;
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -17,7 +19,7 @@ pub(crate) mod code_retrieve;
 use code_retrieve::{CodeRetrieve, ImportMethod};
 
 pub(crate) mod detection_pass;
-use detection_pass::{detection_analysis_task, DetectionPass, TaskQueue};
+use detection_pass::{detection_analysis_task, DetectionPass, FileResults, TaskQueue};
 
 pub(crate) mod apis;
 
@@ -51,6 +53,7 @@ fn Home() -> impl IntoView {
     let stage = RwSignal::new(StepStage::Initial);
 
     let api_client = RwSignal::new(None);
+    let cgf_client = RwSignal::new(CgfClient::new());
     let code_group = RwSignal::new(CodeGroup::new());
 
     let api_provider = RwSignal::new(ApiProvider::Null);
@@ -65,6 +68,7 @@ fn Home() -> impl IntoView {
     let task_queue = RwSignal::new(VecDeque::new());
     let num_finished = RwSignal::new(0);
     let detection_cp = RwSignal::new(false);
+    let file_results = RwSignal::new(Vec::new());
 
     // spawn the detection analysis task ahead of time, which periodically
     // polls the task queue
@@ -72,10 +76,12 @@ fn Home() -> impl IntoView {
         log::debug!("Detection analysis task created and polling...");
         detection_analysis_task(
             api_client,
+            cgf_client,
             code_group,
             task_queue,
             num_finished,
             detection_cp,
+            stage,
         )
         .await;
     });
@@ -110,6 +116,7 @@ fn Home() -> impl IntoView {
                         task_queue
                         num_finished
                         detection_cp
+                        file_results
                         stage
                     />
 
@@ -119,15 +126,24 @@ fn Home() -> impl IntoView {
                         input_code_url
                         input_code_text
                         code_in_vstate
+                        cgf_client
                         code_group
                         task_queue
                         num_finished
                         detection_cp
+                        file_results
                         stage
                     />
 
                     // step 3:
-                    <DetectionPass code_group task_queue detection_cp stage />
+                    <DetectionPass
+                        code_group
+                        task_queue
+                        num_finished
+                        detection_cp
+                        file_results
+                        stage
+                    />
                 </div>
 
                 // footer text and links

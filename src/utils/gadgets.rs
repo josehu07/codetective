@@ -179,7 +179,10 @@ pub(crate) fn HoverResultDiv(percent: Option<u8>, message: String) -> impl IntoV
     view! {
         <div class="relative">
             <div
-                class={format!("w-16 h-6 leading-6 bg-gray-100 hover:bg-gray-300 rounded-md text-center align-middle text-base font-medium cursor-help animate-fade-in {}", color_style)}
+                class=format!(
+                    "w-16 h-6 leading-6 bg-gray-100 hover:bg-gray-300 rounded-md text-center align-middle text-base font-medium cursor-help animate-fade-in {}",
+                    color_style,
+                )
                 on:mouseenter=move |_| show_popup.set(true)
                 on:mouseleave=move |_| show_popup.set(false)
             >
@@ -187,7 +190,7 @@ pub(crate) fn HoverResultDiv(percent: Option<u8>, message: String) -> impl IntoV
             </div>
 
             <Show when=move || show_popup.get()>
-                <div class="fixed bottom-16 left-8 z-40 p-2 bg-gray-800 text-white text-base text-left rounded shadow-lg w-max max-w-lg">
+                <div class="fixed bottom-16 left-12 z-40 p-2 bg-gray-800 text-white text-base text-left rounded shadow-lg w-max max-w-lg">
                     {message.clone()}
                 </div>
             </Show>

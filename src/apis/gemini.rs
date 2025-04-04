@@ -2,7 +2,6 @@
 //!
 //! Reference: https://ai.google.dev/api
 
-use std::cmp;
 use std::mem;
 
 use const_format::concatcp;
@@ -12,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 
-use crate::apis::DetectionResultPair;
+use crate::apis::ApiClient as GenericApiClient;
 use crate::utils::error::{ApiKeyCheckError, ApiMakeCallError};
 
 /// Gemini API request URL prefix.
@@ -173,28 +172,7 @@ impl ApiClient {
                 output.push(' ');
                 output.push_str(&part.text);
             }
-            self.output_parse_pair(output)
+            GenericApiClient::output_parse_pair(output)
         }
-    }
-
-    /// Strip out and parse the expected json output piece from the response.
-    fn output_parse_pair(&self, output: String) -> Result<(u8, String), ApiMakeCallError> {
-        if let Some(pos_s) = output.find('{') {
-            if let Some(pos_e) = output[pos_s..].find('}') {
-                let pos_e = pos_s + pos_e;
-                let json_str = &output[pos_s..=pos_e];
-
-                let result = serde_json::from_str::<DetectionResultPair>(json_str)?;
-                let score = match result.score.as_u64() {
-                    Some(n) => cmp::min(n, 100) as u8,
-                    _ => return Err(ApiMakeCallError::parse("invalid percentage score value")),
-                };
-                return Ok((score, result.reason));
-            }
-        }
-
-        Err(ApiMakeCallError::parse(
-            "failed to parse expected json pair from response",
-        ))
     }
 }

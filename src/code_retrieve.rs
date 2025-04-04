@@ -3,6 +3,8 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use reqwest::Client as CgfClient;
+
 use web_sys::DragEvent;
 
 use gloo_file::FileList;
@@ -15,7 +17,7 @@ use crate::utils::gadgets::{
     StepHeaderExpanded, SuccessIndicator,
 };
 use crate::utils::NBSP;
-use crate::{StepStage, TaskQueue, ValidationState};
+use crate::{FileResults, StepStage, TaskQueue, ValidationState};
 
 /// Enum that controls the state of code retrieval method selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -56,6 +58,7 @@ fn handle_code_url_submit(
     import_method: RwSignal<ImportMethod>,
     input_code_url: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    cgf_client: RwSignal<CgfClient>,
     code_group: RwSignal<CodeGroup>,
     stage: RwSignal<StepStage>,
 ) {
@@ -80,7 +83,7 @@ fn handle_code_url_submit(
         );
 
         let mut code_group_inner = code_group.write();
-        match code_group_inner.import_remote(&code_url).await {
+        match code_group_inner.import_remote(cgf_client, &code_url).await {
             Ok(()) => {
                 code_in_vstate.set(ValidationState::Success);
 
@@ -222,6 +225,7 @@ fn handle_back_button(
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) {
     code_in_vstate.set(ValidationState::Idle);
@@ -233,6 +237,9 @@ fn handle_back_button(
     });
     num_finished.set(0);
     detection_cp.set(false);
+    file_results.update(|results| {
+        results.clear();
+    });
     stage.set(StepStage::ApiDone);
 
     log::info!("Step 2 rolled back: resetting code import validation stage");
@@ -283,6 +290,7 @@ fn ImportFromUrlToSection(
     import_method: RwSignal<ImportMethod>,
     input_code_url: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    cgf_client: RwSignal<CgfClient>,
     code_group: RwSignal<CodeGroup>,
     stage: RwSignal<StepStage>,
     placeholder: &'static str,
@@ -311,6 +319,7 @@ fn ImportFromUrlToSection(
                                 import_method,
                                 input_code_url,
                                 code_in_vstate,
+                                cgf_client,
                                 code_group,
                                 stage,
                             );
@@ -330,6 +339,7 @@ fn ImportFromUrlToSection(
                                 import_method,
                                 input_code_url,
                                 code_in_vstate,
+                                cgf_client,
                                 code_group,
                                 stage,
                             );
@@ -581,6 +591,7 @@ fn CodeRetrieveExpandedView(
     input_code_url: RwSignal<String>,
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    cgf_client: RwSignal<CgfClient>,
     code_group: RwSignal<CodeGroup>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
@@ -634,6 +645,7 @@ fn CodeRetrieveExpandedView(
                                 import_method
                                 input_code_url
                                 code_in_vstate
+                                cgf_client
                                 code_group
                                 stage
                                 placeholder="https://github.com/josehu07/codetective/tree/main"
@@ -683,6 +695,7 @@ fn CodeRetrieveCollapsedView(
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -739,6 +752,7 @@ fn CodeRetrieveCollapsedView(
                                     task_queue,
                                     num_finished,
                                     detection_cp,
+                                    file_results,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center align-middle text-white transition-colors"
@@ -773,10 +787,12 @@ pub(crate) fn CodeRetrieve(
     input_code_url: RwSignal<String>,
     input_code_text: RwSignal<String>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
+    cgf_client: RwSignal<CgfClient>,
     code_group: RwSignal<CodeGroup>,
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -789,6 +805,7 @@ pub(crate) fn CodeRetrieve(
                             input_code_url
                             input_code_text
                             code_in_vstate
+                            cgf_client
                             code_group
                             stage
                         />
@@ -807,6 +824,7 @@ pub(crate) fn CodeRetrieve(
                             task_queue
                             num_finished
                             detection_cp
+                            file_results
                             stage
                         />
                     },

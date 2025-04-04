@@ -3,13 +3,15 @@
 use std::collections::VecDeque;
 use std::mem;
 
+use leptos::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 
 use url::Url;
 
 use reqwest::header::{HeaderMap, ACCEPT};
-use reqwest::{Response, StatusCode};
+use reqwest::{Client, Response, StatusCode};
 
 use crate::file::suffix::LANGUAGE_MAP;
 use crate::file::{CodeGroup, MAX_FILE_SIZE, MAX_NUM_FILES};
@@ -96,6 +98,7 @@ impl CodeGroup {
     /// success.
     async fn handle_redirection(
         &self,
+        client: RwSignal<Client>,
         url: Url,
         response: Response,
     ) -> Result<(Url, Response), CodeImportError> {
@@ -104,13 +107,21 @@ impl CodeGroup {
                 if let Ok(location_str) = location.to_str() {
                     if let Ok(redirect_url) = Url::parse(location_str) {
                         log::warn!("URL redirecting to '{}'...", redirect_url);
-                        let new_resp = self.client.head(redirect_url.as_str()).send().await?;
+                        let new_resp = client
+                            .read_untracked()
+                            .head(redirect_url.as_str())
+                            .send()
+                            .await?;
                         return Ok((redirect_url, new_resp));
                     } else {
                         // handle relative redirects
                         if let Ok(redirect_url) = url.join(location_str) {
                             log::warn!("URL redirecting to '{}'...", redirect_url);
-                            let new_resp = self.client.head(redirect_url.as_str()).send().await?;
+                            let new_resp = client
+                                .read_untracked()
+                                .head(redirect_url.as_str())
+                                .send()
+                                .await?;
                             return Ok((redirect_url, new_resp));
                         }
                     }
@@ -132,10 +143,11 @@ impl CodeGroup {
     /// possibly-updated URL (after redirection), and an approximate size.
     pub(crate) async fn head_single_file(
         &mut self,
+        client: RwSignal<Client>,
         url: Url,
     ) -> Result<Option<(String, Url, usize)>, CodeImportError> {
-        let response = self.client.head(url.as_str()).send().await?;
-        let (final_url, response) = self.handle_redirection(url, response).await?;
+        let response = client.read_untracked().head(url.as_str()).send().await?;
+        let (final_url, response) = self.handle_redirection(client, url, response).await?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -183,6 +195,7 @@ impl CodeGroup {
     /// Parse a user-supplied GitHub repo URL into owner, repo, and tree.
     async fn dissect_github_url(
         &self,
+        client: RwSignal<Client>,
         url: &Url,
     ) -> Result<(String, String, String), CodeImportError> {
         if let Some(segs) = url.path_segments() {
@@ -213,8 +226,8 @@ impl CodeGroup {
                 let mut headers = HeaderMap::new();
                 headers.insert(ACCEPT, "application/vnd.github+json".parse()?);
                 headers.insert("X-GitHub-Api-Version", "2022-11-28".parse()?);
-                let response = self
-                    .client
+                let response = client
+                    .read_untracked()
                     .get(format!("{}/{}/{}", GITHUB_API_PREFIX, owner, repo))
                     .headers(headers)
                     .send()
@@ -246,6 +259,7 @@ impl CodeGroup {
     /// info_list result.
     async fn bfs_traverse_tree(
         &mut self,
+        client: RwSignal<Client>,
         bfs_queue: &mut VecDeque<(String, String)>,
         path_info_list: &mut Vec<(String, (Url, usize))>,
         owner: &str,
@@ -260,8 +274,8 @@ impl CodeGroup {
             let mut headers = HeaderMap::new();
             headers.insert(ACCEPT, "application/vnd.github+json".parse()?);
             headers.insert("X-GitHub-Api-Version", "2022-11-28".parse()?);
-            let response = self
-                .client
+            let response = client
+                .read_untracked()
                 .get(format!(
                     "{}/{}/{}/git/trees/{}",
                     GITHUB_API_PREFIX, owner, repo, tree
@@ -355,6 +369,7 @@ impl CodeGroup {
     /// the link does not seem to be a GitHub repo, return None.
     pub(crate) async fn list_github_repo(
         &mut self,
+        client: RwSignal<Client>,
         url: &Url,
     ) -> Result<Option<Vec<(String, (Url, usize))>>, CodeImportError> {
         if url.scheme() != "http" && url.scheme() != "https" {
@@ -367,13 +382,13 @@ impl CodeGroup {
             return Ok(None);
         }
 
-        let (owner, repo, tree) = self.dissect_github_url(url).await?;
+        let (owner, repo, tree) = self.dissect_github_url(client, url).await?;
 
         // BFS traversal of the repo tree
         let mut path_info_list = Vec::new();
         let mut bfs_queue = VecDeque::new();
         bfs_queue.push_back(("".to_string(), tree));
-        self.bfs_traverse_tree(&mut bfs_queue, &mut path_info_list, &owner, &repo)
+        self.bfs_traverse_tree(client, &mut bfs_queue, &mut path_info_list, &owner, &repo)
             .await?;
 
         if path_info_list.is_empty() {

@@ -12,7 +12,7 @@ use crate::utils::gadgets::{
     StepHeaderExpanded, SuccessIndicator,
 };
 use crate::utils::{NBHY, NBSP};
-use crate::{CodeGroup, StepStage, TaskQueue, ValidationState};
+use crate::{CodeGroup, FileResults, StepStage, TaskQueue, ValidationState};
 
 /// Enum that controls the state of API provider selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -32,8 +32,8 @@ impl ApiProvider {
             ApiProvider::OpenAI => "OpenAI (GPT-4o)",
             ApiProvider::Claude => "Claude (3.7 Sonnet)",
             ApiProvider::Gemini => "Gemini (2.0 Flash)",
-            ApiProvider::OpenRt => "OpenRouter (Auto)",
-            ApiProvider::GroqCl => "Groq (Llama-3-70B)",
+            ApiProvider::OpenRt => "OpenRouter (Mistral Large)",
+            ApiProvider::GroqCl => "Groq Cloud (Llama-3-70B)",
             ApiProvider::Free => "Free Quota (Preset)",
             ApiProvider::Null => "Null",
         }
@@ -115,6 +115,7 @@ fn handle_api_key_submit(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_back_button(
     api_key_vstate: RwSignal<ValidationState<ApiKeyCheckError>>,
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
@@ -122,6 +123,7 @@ fn handle_back_button(
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) {
     api_key_vstate.set(ValidationState::Idle);
@@ -134,6 +136,9 @@ fn handle_back_button(
     });
     num_finished.set(0);
     detection_cp.set(false);
+    file_results.update(|results| {
+        results.clear();
+    });
     stage.set(StepStage::Initial);
 
     log::info!("Step 1 rolled back: resetting API key validation stage");
@@ -387,7 +392,7 @@ fn ApiSelectionExpandedView(
                 >
                     OpenRouter
                     <br />
-                    <div class="font-mono">auto</div>
+                    <div class="font-mono">mistral</div>
                 </button>
             </div>
 
@@ -482,6 +487,7 @@ fn ApiSelectionCollapsedView(
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -505,6 +511,7 @@ fn ApiSelectionCollapsedView(
                                     task_queue,
                                     num_finished,
                                     detection_cp,
+                                    file_results,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center align-middle text-white transition-colors"
@@ -544,6 +551,7 @@ pub(crate) fn ApiSelection(
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
+    file_results: RwSignal<FileResults>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -574,6 +582,7 @@ pub(crate) fn ApiSelection(
                             task_queue
                             num_finished
                             detection_cp
+                            file_results
                             stage
                         />
                     },

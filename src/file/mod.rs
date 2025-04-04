@@ -116,8 +116,6 @@ impl CodeFile {
 
 /// Code import driver.
 pub(crate) struct CodeGroup {
-    client: Client,
-
     files: HashMap<String, RwSignal<CodeFile>>,
     skipped: bool,
 }
@@ -127,15 +125,8 @@ impl CodeGroup {
     pub(crate) fn new() -> Self {
         CodeGroup {
             files: HashMap::new(),
-            client: Client::new(),
             skipped: false,
         }
-    }
-
-    /// Get a references to the HTTP client for file fetching.
-    #[inline]
-    pub(crate) fn cg_client(&self) -> &Client {
-        &self.client
     }
 
     /// Get the number of files.
@@ -176,11 +167,15 @@ impl CodeGroup {
     }
 
     /// Populates the importer with a remote file or a repo of files.
-    pub(crate) async fn import_remote(&mut self, url_str: &str) -> Result<(), CodeImportError> {
+    pub(crate) async fn import_remote(
+        &mut self,
+        client: RwSignal<Client>,
+        url_str: &str,
+    ) -> Result<(), CodeImportError> {
         let url = Url::parse(url_str)?;
 
         // first try as URL to github repo
-        if let Some(path_info_list) = self.list_github_repo(&url).await? {
+        if let Some(path_info_list) = self.list_github_repo(client, &url).await? {
             for (path, (file_url, approx_size)) in path_info_list {
                 self.add_file(path, CodeFile::new_remote(file_url, approx_size))?;
             }
@@ -188,7 +183,7 @@ impl CodeGroup {
         }
 
         // then try as URL to a single raw file
-        if let Some((path, final_url, approx_size)) = self.head_single_file(url).await? {
+        if let Some((path, final_url, approx_size)) = self.head_single_file(client, url).await? {
             self.add_file(path, CodeFile::new_remote(final_url, approx_size))?;
             return Ok(());
         }
