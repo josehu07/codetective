@@ -7,7 +7,7 @@ use leptos::prelude::*;
 
 use gloo_file::FileList;
 
-use url::Url;
+use url::{ParseError, Url};
 
 use reqwest::Client;
 
@@ -172,7 +172,16 @@ impl CodeGroup {
         client: RwSignal<Client>,
         url_str: &str,
     ) -> Result<(), CodeImportError> {
-        let url = Url::parse(url_str)?;
+        let url = match Url::parse(url_str) {
+            Ok(url) => url,
+            Err(ParseError::RelativeUrlWithoutBase) => {
+                // default to prepending a 'https://' scheme
+                Url::parse(format!("https://{}", url_str).as_str())?
+            }
+            Err(err) => {
+                return Err(err.into());
+            }
+        };
 
         // first try as URL to github repo
         if let Some(path_info_list) = self.list_github_repo(client, &url).await? {
