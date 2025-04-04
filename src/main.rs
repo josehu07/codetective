@@ -7,7 +7,7 @@ use reqwest::Client as CgfClient;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use leptos_meta::{provide_meta_context, Link, Stylesheet, Title};
+use leptos_meta::{provide_meta_context, Title};
 
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::StaticSegment;
@@ -204,8 +204,6 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
-        <Stylesheet id="leptos" href="/style/output.css" />
-        <Link rel="icon" type_="image/png" href="/icon/favicon-96x96.png" />
         <Router>
             <Routes fallback=|| "Page not found.">
                 <Route path=StaticSegment("") view=Home />
