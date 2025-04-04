@@ -95,7 +95,7 @@ fn Home() -> impl IntoView {
                             <h1 class="text-5xl font-bold text-gray-600">Co</h1>
                             <h1 class="text-5xl font-bold text-gray-900">de</h1>
                             <h1 class="text-5xl font-bold text-gray-600">tective</h1>
-                            <img src="/codetective.png" alt="Codetective Logo" class="ml-4 h-16" />
+                            <img src="./codetective.png" alt="Codetective Logo" class="ml-4 h-16" />
                         </div>
                         <h2 class="text-2xl font-semibold text-gray-600 mt-4">
                             Code AI Authorship Detection in 5 Clicks
