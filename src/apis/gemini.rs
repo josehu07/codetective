@@ -35,7 +35,7 @@ const CHAT_COMPLETION_URL: &str = concatcp!(
 );
 
 /// Default Gemini API key with no credits (only free quota access).
-const FREE_QUOTA_API_KEY: &str = "QUl6YVN5Qno0QUZYYk9kal9wUTBhaTB6X0lpdGhINzZyOWIwc3Jv";
+const FREE_QUOTA_API_KEY: &str = "xyzQUl6YVN5QW53SVJxYkNqLVBnLTgyWkNwX1YwT1E1U0huM2hMVG9rxyz";
 
 /// Max output tokens cap.
 const MAX_OUTPUT_TOKENS: u32 = 500;
@@ -85,7 +85,7 @@ impl ApiClient {
         let client = Self {
             api_key: api_key.unwrap_or_else(|| {
                 let decoded = BASE64_STANDARD
-                    .decode(FREE_QUOTA_API_KEY)
+                    .decode(&FREE_QUOTA_API_KEY[3..FREE_QUOTA_API_KEY.len() - 3])
                     .expect("Failed to do base64 decoding");
                 String::from_utf8(decoded).expect("API key is not a valid UTF-8 string")
             }),

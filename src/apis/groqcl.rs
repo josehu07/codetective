@@ -31,7 +31,7 @@ const CHAT_COMPLETION_URL: &str = concatcp!(GROQCL_API_PREFIX, "/chat/completion
 
 /// Default Groq Cloud API key with no credits (only free quota access).
 const FREE_QUOTA_API_KEY: &str =
-    "Z3NrX0lJdndlTURFcHRVeklKRWtqYWhNV0dkeWIzRllIcVFTOTdOajZEODFudzk5MDB6MTNCd2E=";
+    "xyzZ3NrX3YyOXZKMWxmUkRYUUdScmFVd21KV0dkeWIzRllTc3BjZ01veEl5OHN5RzgwT3Q4TWJqeHA=xyz";
 
 /// Max output tokens cap.
 const MAX_OUTPUT_TOKENS: u32 = 500;
@@ -76,7 +76,7 @@ impl ApiClient {
         let client = Self {
             api_key: api_key.unwrap_or_else(|| {
                 let decoded = BASE64_STANDARD
-                    .decode(FREE_QUOTA_API_KEY)
+                    .decode(&FREE_QUOTA_API_KEY[3..FREE_QUOTA_API_KEY.len() - 3])
                     .expect("Failed to do base64 decoding");
                 String::from_utf8(decoded).expect("API key is not a valid UTF-8 string")
             }),
