@@ -66,6 +66,7 @@ fn Home() -> impl IntoView {
     let num_finished = RwSignal::new(0);
     let detection_cp = RwSignal::new(false);
     let file_results = RwSignal::new(Vec::new());
+    let nothing_to_retry = RwSignal::new(false);
 
     // spawn the detection analysis task ahead of time, which periodically
     // polls the task queue
@@ -114,6 +115,7 @@ fn Home() -> impl IntoView {
                         num_finished
                         detection_cp
                         file_results
+                        nothing_to_retry
                         stage
                     />
 
@@ -129,6 +131,7 @@ fn Home() -> impl IntoView {
                         num_finished
                         detection_cp
                         file_results
+                        nothing_to_retry
                         stage
                     />
 
@@ -139,6 +142,7 @@ fn Home() -> impl IntoView {
                         num_finished
                         detection_cp
                         file_results
+                        nothing_to_retry
                         stage
                     />
                 </div>

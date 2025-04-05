@@ -195,6 +195,7 @@ fn handle_retry_button(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
 ) {
     // put all failed tasks back to the queue, in sorted order
     let mut num_retried = 0;
@@ -209,8 +210,11 @@ fn handle_retry_button(
     }
 
     if num_retried > 0 {
+        nothing_to_retry.set(false);
         num_finished.update(|num| *num -= cmp::min(num_retried, *num));
         detection_cp.set(false);
+    } else {
+        nothing_to_retry.set(true);
     }
 }
 
@@ -339,12 +343,28 @@ fn FileDetectionRow(
 }
 
 #[component]
+fn NoRetryErrorMsg(nothing_to_retry: RwSignal<bool>) -> impl IntoView {
+    move || {
+        if nothing_to_retry.get() {
+            Some(view! {
+                <div class="text-red-700 text-base font-mono mt-4 text-center animate-fade-in">
+                    Nothing to retry, all files have been analyzed successfully
+                </div>
+            })
+        } else {
+            None
+        }
+    }
+}
+
+#[component]
 fn DetectionPassExpandedView(
     code_group: RwSignal<CodeGroup>,
     task_queue: RwSignal<TaskQueue>,
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
 ) -> impl IntoView {
     view! {
         <div class="relative max-w-4xl w-full mt-12 px-8 py-6 bg-white/60 rounded-lg shadow-sm animate-fade-in">
@@ -412,13 +432,14 @@ fn DetectionPassExpandedView(
                 (detection_cp.get())
                     .then_some(
                         view! {
-                            <div class="mt-6 mb-1 flex items-center justify-center space-x-8 w-full animate-slide-down">
+                            <div class="mt-6 mb-2 flex items-center justify-center space-x-8 w-full animate-slide-down">
                                 <button
                                     on:click=move |_| handle_retry_button(
                                         task_queue,
                                         num_finished,
                                         detection_cp,
                                         file_results,
+                                        nothing_to_retry,
                                     )
                                     class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow transition-colors flex align-middle"
                                 >
@@ -467,6 +488,8 @@ fn DetectionPassExpandedView(
                         },
                     )
             }}
+
+            <NoRetryErrorMsg nothing_to_retry />
         </div>
     }
 }
@@ -479,6 +502,7 @@ pub(crate) fn DetectionPass(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -492,6 +516,7 @@ pub(crate) fn DetectionPass(
                             num_finished
                             detection_cp
                             file_results
+                            nothing_to_retry
                         />
                     },
                 )

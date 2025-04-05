@@ -124,6 +124,7 @@ fn handle_back_button(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) {
     api_key_vstate.set(ValidationState::Idle);
@@ -139,6 +140,7 @@ fn handle_back_button(
     file_results.update(|results| {
         results.clear();
     });
+    nothing_to_retry.set(false);
     stage.set(StepStage::Initial);
 
     log::info!("Step 1 rolled back: resetting API key validation stage");
@@ -488,6 +490,7 @@ fn ApiSelectionCollapsedView(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -512,6 +515,7 @@ fn ApiSelectionCollapsedView(
                                     num_finished,
                                     detection_cp,
                                     file_results,
+                                    nothing_to_retry,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center align-middle text-white transition-colors"
@@ -552,6 +556,7 @@ pub(crate) fn ApiSelection(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -583,6 +588,7 @@ pub(crate) fn ApiSelection(
                             num_finished
                             detection_cp
                             file_results
+                            nothing_to_retry
                             stage
                         />
                     },

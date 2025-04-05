@@ -219,6 +219,7 @@ fn handle_code_files_upload(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_back_button(
     code_in_vstate: RwSignal<ValidationState<CodeImportError>>,
     code_group: RwSignal<CodeGroup>,
@@ -226,6 +227,7 @@ fn handle_back_button(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) {
     code_in_vstate.set(ValidationState::Idle);
@@ -240,6 +242,7 @@ fn handle_back_button(
     file_results.update(|results| {
         results.clear();
     });
+    nothing_to_retry.set(false);
     stage.set(StepStage::ApiDone);
 
     log::info!("Step 2 rolled back: resetting code import validation stage");
@@ -696,6 +699,7 @@ fn CodeRetrieveCollapsedView(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -753,6 +757,7 @@ fn CodeRetrieveCollapsedView(
                                     num_finished,
                                     detection_cp,
                                     file_results,
+                                    nothing_to_retry,
                                     stage,
                                 )
                                 class="absolute -bottom-3 -right-5 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-md flex items-center justify-center align-middle text-white transition-colors"
@@ -793,6 +798,7 @@ pub(crate) fn CodeRetrieve(
     num_finished: RwSignal<usize>,
     detection_cp: RwSignal<bool>,
     file_results: RwSignal<FileResults>,
+    nothing_to_retry: RwSignal<bool>,
     stage: RwSignal<StepStage>,
 ) -> impl IntoView {
     view! {
@@ -825,6 +831,7 @@ pub(crate) fn CodeRetrieve(
                             num_finished
                             detection_cp
                             file_results
+                            nothing_to_retry
                             stage
                         />
                     },
